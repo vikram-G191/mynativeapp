@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -12,29 +12,37 @@ import {
   Platform,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { AnimatedCircularProgress } from 'react-native-circular-progress';
+import {AnimatedCircularProgress} from 'react-native-circular-progress';
 import FastImage from 'react-native-fast-image';
-import { useRoute } from '@react-navigation/native';
-
-const SearchAI = ({ navigation }) => {
+import {useRoute} from '@react-navigation/native';
+import { GetTBSAvailableService } from '../API/TBSapi/Home/Home';
+import { useDispatch } from 'react-redux';
+ 
+const SearchAI = ({navigation}) => {
   const screenHeight = Dimensions.get('window').height;
-
+ 
   const translateValue = useRef(new Animated.Value(0)).current;
   const imageTranslateValue = useRef(new Animated.Value(0)).current;
   const scaleValue = useRef(new Animated.Value(0)).current;
   const opacityValue = useRef(new Animated.Value(1)).current;
-
+ 
   const [fillValue, setFillValue] = useState(0);
   const [showGif, setShowGif] = useState(false);
-
-  const ANIMATION_DURATION = 8000; // Adjusted to 8 seconds
+ 
+  const ANIMATION_DURATION = 7000; // Adjusted to 8 seconds
+  const PROGRESS_BAR_DURATION = 6000;
   const route = useRoute();
-
-  const Journey_Details = route.params?.state?.Journey_Details || 'No Source ID';
+ 
+ 
+  const Journey_Details = route.params?.state?.Source_Ids;
   const Journey_Date = route.params?.state?.Journey_Date;
-  const selectedBusesRegular = route?.params?.state?.selectedBusesRegular
-  const selectedBusesLuxury = route?.params?.state?.selectedBusesLuxury
-  const selectedBusesAll = route?.params?.state?.selectedBusesAll
+ 
+  // const Journey_Details = route.params?.state?.Journey_Details || 'No Source ID';
+  // const Journey_Date = route.params?.state?.Journey_Date;
+  const selectedBusesRegular = route?.params?.state?.selectedBusesRegular;
+  const selectedBusesLuxury = route?.params?.state?.selectedBusesLuxury;
+  const selectedBusesAll = route?.params?.state?.selectedBusesAll;
+  const selectedBusType = route?.params?.state?.selectedBusType;
   // Background scrolling animation
   const scrollUpAnimation = () => {
     return Animated.timing(translateValue, {
@@ -44,32 +52,32 @@ const SearchAI = ({ navigation }) => {
       useNativeDriver: false, // Use false for layout-affecting transformations
     });
   };
-
+ 
   // Image bounce animation (up & down)
   const imageScrollAnimation = () => {
     return Animated.sequence([
       Animated.timing(imageTranslateValue, {
         toValue: screenHeight - 100,
-        duration: ANIMATION_DURATION / 5,
+        duration: ANIMATION_DURATION / 3,
         easing: Easing.linear,
         useNativeDriver: true,
       }),
       Animated.timing(imageTranslateValue, {
         toValue: 0,
-        duration: ANIMATION_DURATION / 5,
+        duration: ANIMATION_DURATION / 3,
         easing: Easing.linear,
         useNativeDriver: true,
       }),
     ]);
   };
-
+ 
   useEffect(() => {
     Animated.parallel([
       Animated.loop(scrollUpAnimation()),
       Animated.loop(imageScrollAnimation()),
     ]).start();
   }, []); // Added dependency array to ensure it runs only once
-
+ 
   useEffect(() => {
     if (fillValue === 100) {
       // Scaling animation when progress completes
@@ -78,38 +86,79 @@ const SearchAI = ({ navigation }) => {
         duration: 1000,
         useNativeDriver: true,
       }).start();
-
+ 
       setTimeout(() => {
+        // Fade out the opacity
         Animated.timing(opacityValue, {
           toValue: 0,
-          duration: 1000,
+          duration: 3000,
           useNativeDriver: true,
         }).start(() => {
-          setShowGif(true);
-          Animated.timing(opacityValue, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }).start();
-
+          // After the opacity fade-out, navigate to the next screen
           setTimeout(() => {
             navigation.navigate('TripListScreen', {
               state: {
-                Journey_Details, Journey_Date,
+                Journey_Details,
+                Journey_Date,
                 selectedBusesRegular,
                 selectedBusesLuxury,
-                selectedBusesAll
-              }
+                selectedBusesAll,
+                selectedBusType,
+              },
             });
-          }, 2000);
+          }, 2000); // Delay navigation for 2 seconds after opacity fade-out
         });
-      }, 2000);
+      }, 2000); // Start fade-out 2 seconds after the scaling animation starts
     }
   }, [fillValue]);
-
+ 
+// const dispatch = useDispatch()
+//   useEffect(()=>{
+//     const getbuses = async() =>{
+//       console.log(Journey_Details,Journey_Date,"journeydetailssssssss");
+     
+// const response = await GetTBSAvailableService(dispatch,Journey_Details,Journey_Date)
+//     }
+// getbuses()
+//   },[])
+ 
+const dispatch = useDispatch()
+ 
+// useEffect(() => {
+//   const getBusList = async () => {
+//     console.log(Journey_Details, Journey_Date, "This is common");
+ 
+//     const apiPromise = GetTBSAvailableService(dispatch, Journey_Details, Journey_Date);
+//     const delayPromise = new Promise(resolve => setTimeout(resolve, 7000)); // wait 6 seconds
+ 
+//     const [response] = await Promise.all([apiPromise, delayPromise]);
+ 
+//     console.log(response, "naa ready than", response.status, "anna naa ready");
+//     if (response.status === "success") {
+//       navigation.navigate('TripListScreen', {
+//         state: {
+//           Journey_Details,
+//           Journey_Date,
+//           selectedBusesRegular,
+//           selectedBusesLuxury,
+//           selectedBusesAll,
+//           selectedBusType,
+//         },
+//       });
+//     }
+//     // setStatus(response.status);
+//   };
+ 
+//   getBusList();
+// }, []);
+ 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={[styles.backgroundContainer, { transform: [{ translateY: translateValue }] }]}>
+      <Animated.View
+        style={[
+          styles.backgroundContainer,
+          {transform: [{translateY: translateValue}]},
+        ]}>
         {[...Array(4)].map((_, i) => (
           <ImageBackground
             key={i}
@@ -119,18 +168,18 @@ const SearchAI = ({ navigation }) => {
           />
         ))}
       </Animated.View>
-
-      <Animated.View style={{ transform: [{ translateY: imageTranslateValue }] }}>
+ 
+      <Animated.View style={{transform: [{translateY: imageTranslateValue}]}}>
         <View style={styles.container1}>
           <LinearGradient
             colors={['#1F487C1A', '#1F487C44', '#1F487C80', '#FFFFFF']}
             style={styles.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
+            start={{x: 0, y: 0}}
+            end={{x: 0, y: 1}}
           />
         </View>
       </Animated.View>
-
+ 
       <View style={styles.imageContainer}>
         <Image
           source={require('../assets/topLeftImage.png')}
@@ -149,18 +198,17 @@ const SearchAI = ({ navigation }) => {
           style={[styles.cornerImage, styles.bottomRight]}
         />
       </View>
-
+ 
       <View style={styles.centeredView}>
         {fillValue !== 100 && (
           <AnimatedCircularProgress
             size={200}
             width={20}
             fill={100}
-            duration={ANIMATION_DURATION}
+            duration={PROGRESS_BAR_DURATION}
             tintColor="#1F487C"
             backgroundColor="#fff"
-            onAnimationComplete={() => setFillValue(100)}
-          >
+            onAnimationComplete={() => setFillValue(100)}>
             {fill => {
               const value = Math.round(fill);
               if (value !== fillValue) setFillValue(value);
@@ -171,11 +219,15 @@ const SearchAI = ({ navigation }) => {
         {fillValue === 100 && !showGif && (
           <Animated.Image
             source={require('../assets/owal.png')}
-            style={[{ width: '100%', height: '100%' }, { transform: [{ scale: scaleValue }] }, { opacity: opacityValue }]}
+            style={[
+              {width: '100%', height: '100%'},
+              {transform: [{scale: scaleValue}]},
+              {opacity: opacityValue},
+            ]}
             resizeMode="contain"
           />
         )}
-        {showGif &&
+        {/* {showGif &&
           (Platform.OS === 'ios' ? (
             <Animated.Image
               source={require('../assets/tick.gif')}
@@ -187,7 +239,7 @@ const SearchAI = ({ navigation }) => {
               style={{ height: 140, width: 140 }}
               resizeMode={FastImage.resizeMode.contain}
             />
-          ))}
+          ))} */}
       </View>
     </SafeAreaView>
   );
@@ -218,8 +270,8 @@ const styles = StyleSheet.create({
     height: 60,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-
-    shadowOffset: { width: 0, height: 5 },
+ 
+    shadowOffset: {width: 0, height: 5},
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
@@ -279,5 +331,5 @@ const styles = StyleSheet.create({
     width: 200,
   },
 });
-
+ 
 export default SearchAI;

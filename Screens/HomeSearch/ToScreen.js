@@ -11,6 +11,8 @@ import { fetchStations } from '../API/ABHIBUSapi/Home';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { GetStations } from '../API/TBSapi/Home/Home';
+import FastImage from 'react-native-fast-image';
+import { Skeleton } from '@rneui/themed';
 
 
 
@@ -54,7 +56,7 @@ const ToScreen = ({ route, navigation }) => {
       style={styles.itemContainer}
       onPress={() => {
         setSearchValue("");  // Clear the search input
-        navigation.navigate('HomeScreen', {
+        navigation.navigate('Home', {
           To_Station: item.station_name,
           Source_Station_Id: item?.source_id,
         });
@@ -67,7 +69,7 @@ const ToScreen = ({ route, navigation }) => {
           <Text style={styles.itemText11}>{item?.state_name}</Text>
         </View>
         <View style={styles.rightView}>
-          <Text style={styles.itemText11}>Board at</Text>
+          <Text style={styles.itemText11}>Drop at</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -94,7 +96,10 @@ const ToScreen = ({ route, navigation }) => {
                   placeholder="Search Dropping Point"
                   value={searchValue}
                   placeholderTextColor="#1F487C80"
-                  onChangeText={setSearchValue}
+                  onChangeText={text => {
+                    const lettersOnly = text.replace(/[^a-zA-Z\s]/g, ''); // allow letters and spaces
+                    setSearchValue(lettersOnly);
+                  }}
                 />
               </View>
             </View>
@@ -108,7 +113,7 @@ const ToScreen = ({ route, navigation }) => {
 
             {/* ScrollView for stations */}
             <View style={{ flex: 1, marginVertical: -20 }}>
-              <ScrollView keyboardShouldPersistTaps='handled' style={styles.scrollView}>
+              {/* <ScrollView keyboardShouldPersistTaps='handled' style={styles.scrollView}>
                 <View style={{ margin: 20, marginVertical: 0 }}>
                   <Text style={{ color: 'rgba(31, 72, 124, 1)', fontSize: 18, fontWeight: '600' }}>
                     Available Dropping Points
@@ -116,12 +121,106 @@ const ToScreen = ({ route, navigation }) => {
                 </View>
 
                 <View style={styles.listContainer}>
+                {station && station.length > 0 ? (
                   <FlatList
                     data={station}
                     renderItem={renderStation}
                     keyExtractor={(item, index) => index.toString()}
                     style={styles.flatList}
                   />
+                ): (
+                    <View
+                      style={{
+                        height: 600,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        // backgroundColor:"red",
+                      }}>
+                      <FastImage
+                        style={{height: 260, width: 250, borderRadius: 100,backgroundColor: "white"}}
+
+                        source={require('../assets/Loader/Busloader.gif')}
+                        resizeMode={FastImage.resizeMode.contain}
+                      />
+                    </View>
+                  )}
+                </View>
+              </ScrollView> */}
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                style={styles.scrollView}>
+                <View style={{ margin: 20, marginVertical: 0 }}>
+                  <Text
+                    style={{
+                      color: 'rgba(31, 72, 124, 1)',
+                      fontSize: 18,
+                      fontWeight: '600',
+                    }}>
+                    Available Dropping Points
+                  </Text>
+                </View>
+
+                <View style={styles.listContainer}>
+                  {station && station.length > 0 ? (
+                    <FlatList
+                      data={station}
+                      renderItem={renderStation}
+                      keyExtractor={(item, index) => index.toString()}
+                      style={styles.flatList}
+                    />
+                  ) : (
+                    <ScrollView contentContainerStyle={{ paddingVertical: 10 }}>
+                      {[...Array(10)].map((_, index) => (
+                        <View key={index}>
+                          <View
+                            style={{
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              marginBottom: 20,
+                            }}>
+                            <View style={styles.SkeletonView}>
+                              <View
+                                style={{
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  gap: 16,
+                                }}>
+                                <Skeleton
+                                  circle
+                                  width={40}
+                                  height={40}
+                                  style={{ marginTop: -10 }}
+                                />
+                                <Skeleton
+                                  width={250}
+                                  height={8}
+                                  style={{ marginTop: -25 }}
+                                />
+                              </View>
+                              <Skeleton
+                                width={250}
+                                height={8}
+                                style={{ marginTop: -20, marginLeft: 56 }}
+                              />
+                            </View>
+                          </View>
+
+                          {/* Divider line (not after last item) */}
+                          {index !== 9 && (
+                            <View
+                              style={{
+                                height: 1,
+                                backgroundColor: '#ccc',
+                                width: '90%',
+                                alignSelf: 'center',
+                                marginBottom: 10,
+                              }}
+                            />
+                          )}
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
                 </View>
               </ScrollView>
             </View>
@@ -165,7 +264,7 @@ const styles = StyleSheet.create({
   flatList: {
     width: '100%',
     flexGrow: 0,
-    height: 600,
+    height: '100%',
   },
   itemContainer: {
     width: '100%',
@@ -210,8 +309,8 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     marginLeft: 35,
-
     fontSize: 16,
+    color: '#1F487C80'
   },
   searchButton: {
     padding: 10,
@@ -219,6 +318,18 @@ const styles = StyleSheet.create({
   searchIcon: {
     width: 24,
     height: 24,
+  },
+  SkeletonView: {
+    height: 25,
+    borderRadius: 10,
+    marginHorizontal: 5,
+    marginVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: 'white',
+    // borderWidth: 1, // Border thickness
+    borderColor: '#1F487C', // Border color
+    borderStyle: 'solid', // (Optional) Default is solid
   },
 });
 

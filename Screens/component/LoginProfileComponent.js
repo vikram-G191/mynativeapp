@@ -14,7 +14,7 @@ const LoginProfileComponent = ({ image, title, onPress, navigation }) => {
                 <Text style={styles.loginText}>Login</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.sigupView}>
+            <TouchableOpacity style={styles.sigupView} onPress={() => navigation.navigate('LoginScreen')}>
                 <Text style={styles.signupText}>Don’t have an account? <Text style={{ textDecorationLine: 'underline' }}>Sign up</Text> </Text>
             </TouchableOpacity>
         </View>
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
 
     titleView: {
         display: 'flex',
-        gap: 10,
+        gap: 30,
         paddingLeft: 20,
         paddingRight: 20,
     },
@@ -55,7 +55,8 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '400',
         lineHeight: 19,
-        color: '#1F487C'
+        color: '#1F487C',
+        textAlign:"center"
     },
 
 

@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useRef, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,10 @@ import {
   ImageBackground,
   Dimensions,
   Image,
+  Animated,
   Alert,
   SectionList,
+  BackHandler,
 } from 'react-native';
 import Swiper from 'react-native-swiper';
 import Modal from 'react-native-modal';
@@ -39,9 +41,67 @@ import Svg, {Path} from 'react-native-svg';
 import {calculateDiscountedFare} from '../component/Tbs_Disocunt';
 import {CURRENT_PERCENTAGE} from '../Redux/Store/Type';
 import FastImage from 'react-native-fast-image';
+import {useFocusEffect} from '@react-navigation/native';
+import IconSVG from '../SVG/SVG';
+import ViewMoreScreen from './ViewMoreScreen';
 // import { useRoute } from '@react-navigation/native';
 const BusSeatSelectScreen = ({props, navigation, route}) => {
   const dispatch = useDispatch();
+
+  const scrollYPrivacy = useRef(new Animated.Value(0)).current;
+
+  const contentHeightPrivacy = useRef(1);
+
+  const scrollViewHeightPrivacy = useRef(1);
+
+  const scrollViewRefPrivacy = useRef(null); // Separate ref for Privacy
+
+  // Function to handle the custom scrollbar with separate scrollbar height
+  const renderCustomScrollbar = section => {
+    const scrollY = scrollYPrivacy;
+    const scrollViewHeight = scrollViewHeightPrivacy;
+
+    const speedFactor = 1; // Speed factor for each section
+
+    // Separate scrollbar height for each section
+    const scrollbarHeightPrivacy = 60;
+
+    const scrollbarHeight = scrollY.interpolate({
+      inputRange: [0, contentHeightPrivacy.current - scrollViewHeight.current],
+      outputRange: [
+        scrollbarHeightPrivacy,
+        60, // Minimum height for the scrollbar
+      ],
+      extrapolate: 'clamp',
+    });
+
+    const thumbTranslateY = scrollY.interpolate({
+      inputRange: [0, contentHeightPrivacy.current - scrollViewHeight.current],
+      outputRange: [
+        0,
+        (scrollViewHeight.current - 80) * speedFactor, // Adjusted by speed factor
+      ],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <View style={styles.scrollbarTrack}>
+        <Animated.View
+          style={[
+            styles.scrollbarThumb,
+            {
+              height: scrollbarHeight, // Set scrollbar height dynamically
+              transform: [
+                {
+                  translateY: thumbTranslateY,
+                },
+              ],
+            },
+          ]}
+        />
+      </View>
+    );
+  };
 
   const tbs_discount = useSelector(state => state?.productReducer?.live_per);
 
@@ -56,24 +116,96 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
   const [selectedPrice, setSelectedPrice] = useState('500');
 
   const [selectedIndex, setSelectedIndex] = useState(0); // Initialize with default index
-
+  const [selectedButton, setSelectedButton] = useState(null); // Tracks selected button
   const useThemeColor = route.params.themecolor;
+
+  const screenHeight = Dimensions.get('window').height;
+  const contentHeight = screenHeight * 0.65; // 50% of screen height
+
+  const [showBottomModal, setShowBottomModal] = useState(false);
+  const slideAnim = useRef(
+    new Animated.Value(Dimensions.get('window').height),
+  ).current; // start off-screen
+
+  const openBottomModal = () => {
+    setShowBottomModal(true);
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeBottomModal = () => {
+    Animated.timing(slideAnim, {
+      toValue: Dimensions.get('window').height,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowBottomModal(false);
+      setSelectedButton(null);
+    });
+  };
+
+  const {item, screenTheme, themecolor, themeColor2, Journey_Details} =
+    route?.params;
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        navigation.navigate('TripListScreen', {
+          state: {Journey_Details: Journey_Details},
+        }); // change 'Home' to your desired screen
+        return true; // prevent default behavior
+      };
+
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () =>
+        BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [navigation]),
+  );
 
   // const { screenTheme = 'Normal Coach' } = route.params || {};
 
   const operatorFontColor =
-    screenTheme === 'Luxury Coach' ? '#141414' : useThemeColor; // Default to black if not '#393939'
+    screenTheme === 'Luxury Coach' ? '#393939' : useThemeColor; // Default to black if not '#393939'
 
   const themeheaderFontColor =
-    screenTheme === 'Luxury Coach' ? '#141414' : '#FFFFFF'; // Default to black if not '#393939'
+    screenTheme === 'Luxury Coach' ? '#393939' : '#FFFFFF'; // Default to black if not '#393939'
 
   const [selectSeatScreen, setSelectSeatScreen] = useState('SelectSeat');
+  const [seatModal, setseatModal] = useState(false);
+  const handleOpen = () => setModalVisible(true);
+  const [statusVisible, setStatusVisible] = useState(false);
+  const [busData, setBusdata] = useState([]);
+  const handleClose = () => setModalVisible(false);
+
+  const viewListAry = [
+    {
+      id: '1',
+      task: 'Bus Stops',
+      icons: {normal: 'busStopsBlue', selected: 'busStops'},
+    },
+    {
+      id: '2',
+      task: 'Cancel Policy',
+      icons: {normal: 'cancelPolicyBlue', selected: 'cancelPolicy'},
+    },
+    {
+      id: '3',
+      task: 'Amenities',
+      icons: {normal: 'amenitiesBlue', selected: 'amenities'},
+    },
+    {
+      id: '4',
+      task: 'Travel Policy',
+      icons: {normal: 'travelPolicyBlue', selected: 'travelPolicy'},
+    },
+  ];
 
   const [seatSelection, setSeatSelection] = useState(null);
   // const [selectedSeat, setSelectedSeat] = useState(null);
-
-  const {item, screenTheme, themecolor, themeColor2, Journey_Details} =
-    route?.params;
 
   const [seatLayout, setSeatLayout] = useState();
 
@@ -94,6 +226,20 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
   });
 
   const [selectedSeat, setSelectedSeat] = useState([]); // Use an array for multiple selections
+
+  console.log(selectedSeat, 'selected_Seat');
+  const formatTravelTime = timeStr => {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':');
+    const hours = parseInt(h, 10);
+    const minutes = parseInt(m, 10);
+
+    if (minutes === 0) {
+      return `${hours}h`;
+    }
+
+    return `${hours}h ${minutes}m`;
+  };
 
   const [totalPrice, setTotalPrice] = useState(0);
 
@@ -155,12 +301,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
     parseDroppinginfo(item?.dropping_info || []),
   );
 
-  console.log(
-    boardingPoints,
-    '|---------------|',
-    droppingPoints,
-    'boardingPointsdropping',
-  );
+  console.log(boardingPoints, '|---------------|');
 
   useEffect(() => {
     if (selectedSeat) {
@@ -173,6 +314,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
   const fetchSeatLayout = async () => {
     try {
       // const data = await Abhibus_SeatLayout(item, dispatch);
+      setBusdata(item);
       const data = await GetTBSSeatLayout(item, dispatch);
       setSeatLayout(data?.seatlayout);
     } catch (error) {
@@ -212,7 +354,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
         isBooked: isBooked === 'N',
         gender,
         price: Number(price),
-        seatTypeID: Number(seatTypeID),
+        seatTypeID: seatTypeID,
         tax: parsedTax,
         childFare: Number(childFare),
         category,
@@ -221,6 +363,8 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
     });
   };
 
+  console.log(screenTheme, 'screenTheme');
+
   // Format seat data
   const lowerDeckSeats = formatSeatData(
     seatLayout?.TotalSeatList?.lowerdeck_seat_nos || [],
@@ -228,7 +372,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
   const upperDeckSeats = formatSeatData(
     seatLayout?.TotalSeatList?.upperdeck_seat_nos || [],
   );
-  console.log(lowerDeckSeats, 'seating_layout');
+  // console.log(lowerDeckSeats, 'seating_layout');
 
   const Formatting = date => {
     const formattedDate = new Date(date);
@@ -238,6 +382,26 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
     );
     // console.log(travel_date); // Output: "13 Mar"
     return travel_date;
+  };
+  const handleSeatLeftColor = (item) => {
+    const seats = Number(item.available_seats);
+
+    if (seats >= 0 && seats < 10) {
+      return {
+        bg: "#FFC1C180",
+        text: "#C62B2B",
+      };
+    } else if (seats >= 10 && seats < 30) {
+      return {
+        bg: "#f9e5c9",
+        text: "#ce7a00",
+      };
+    } else {
+      return {
+        bg: "#dbefdc",
+        text: "#229e37",
+      };
+    }
   };
 
   const calculateArrival = (departureDate, departureTime, duration) => {
@@ -339,6 +503,47 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
     {id: 9, isBooked: false, isSelected: true, SeatLegend: 'Men'},
     {id: 10, isBooked: true, isSelected: false, SeatLegend: 'Men'},
   ]);
+
+  const handleContinuePress = () => {
+    if (selectSeatScreen === 'SelectSeat') {
+      if (selectedSeat.length === 0) {
+        // Alert if seat is not selected
+        Alert.alert('Select Seat', 'Please select a seat first');
+      } else {
+        // Move to BoardingPoint screen after selecting the seat
+        setSelectSeatScreen('BoardingPoint');
+      }
+    } else if (selectSeatScreen === 'BoardingPoint') {
+      if (
+        selectedSeat.length > 0 &&
+        selectedBoardingPoint.city?.length > 0 &&
+        selectedDroppingPoint.city?.length > 0
+      ) {
+        // Proceed to next screen if all conditions are met
+        navigation.navigate('TravelerScreenDetails', {
+          screenTheme: screenTheme,
+          themecolor: useThemeColor,
+          themeColor2: route.params.themeColor2,
+          selectedBoardingPoint: selectedBoardingPoint,
+          selectedDroppingPoint: selectedDroppingPoint,
+          seatLayout: seatLayout,
+          selectedBusData: item,
+          selectedSeat: selectedSeat,
+          totalPrice: totalPrice,
+          Journey_Details: Journey_Details,
+        });
+      } else if (selectedSeat.length > 0) {
+        // Alert for missing Boarding or Dropping point
+        Alert.alert(
+          'Missing Points',
+          'Please select both Boarding and Dropping Points',
+        );
+      } else {
+        // Alert for missing seat selection
+        Alert.alert('Select Seat', 'Please select a seat first');
+      }
+    }
+  };
 
   //Filter Listview and Row
   const HorizontalFilterListItem = ({item}) => {
@@ -494,7 +699,9 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                     fontFamily: 'Inter',
                     fontWeight: '600',
                   }}>
-                  {item?.TravelTime.split(':').slice(0, 2).join(':')} Hrs
+                  <Text style={styles.tripDurationTimeTxt}>
+                    {formatTravelTime(item?.TravelTime)}
+                  </Text>
                 </Text>
               </View>
               <View
@@ -610,22 +817,33 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 </Text>
               </View> */}
             </View>
+
+            <Text
+              style={{
+                marginTop: -20,
+                color: screenTheme === 'Luxury Coach' ? "#393939" : '#1F487C',
+                fontWeight: '600',
+                fontFamily: 'Inter',
+                fontSize: 12,
+              }}>
+              Available Seats
+            </Text>
             <View
               style={{
                 flexDirection: 'row',
-                backgroundColor: '#FFC1C1',
+                backgroundColor: handleSeatLeftColor(item).bg,
                 justifyContent: 'center',
                 alignItems: 'center',
                 height: 24,
                 borderRadius: 12,
               }}>
-              <Svg style={{width: 14, height: 14, margin: 5}}>
-                <SeatRed width="90%" height="90%" />
+              <Svg style={{ width: 14, height: 14, margin: 5 }}>
+                <SeatRed width="90%" height="90%" color={handleSeatLeftColor(item).text} />
               </Svg>
               <Text
                 style={{
                   fontSize: 10,
-                  color: '#C62B2B',
+                  color: handleSeatLeftColor(item).text,
                   fontWeight: 'bold',
                   paddingRight: 5,
                 }}>
@@ -645,66 +863,178 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               9 Window Seats
             </Text> */}
           </View>
-        </View>
-        {
-          seatLayout ? 
-          <View
-          style={{
-            flexDirection: 'column',
-            justifyContent: 'flex-start',
-            alignItems: 'flex-start',
-            borderColor: useThemeColor,
-            borderBottomRightRadius: 15,
-            borderBottomLeftRadius: 15,
-            borderWidth: 1,
 
-            flex: 1,
-            backgroundColor:
-              screenTheme === 'Luxury Coach' ? '#FFEEC9' : '#EEEDED',
-          }}>
+        </View>
+        {seatLayout ? (
           <View
             style={{
-              backgroundColor: useThemeColor,
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              height: 40,
-              width: '104%',
-              borderBottomRightRadius: 4,
-              borderTopRightRadius: 4,
-              position: 'relative',
-              top: -1,
-              left: 0,
-              flexDirection: 'row',
+              flexDirection: 'column',
+              justifyContent: 'flex-start',
+              alignItems: 'flex-start',
+              borderColor: useThemeColor,
+              borderBottomRightRadius: 15,
+              borderBottomLeftRadius: 15,
+              borderWidth: 1,
+              flex: 1,
+              width:'100%',
+              backgroundColor:
+                screenTheme === 'Luxury Coach' ? '#FFEEC9' : '#EEEDED',
             }}>
             <View
               style={{
-                flexDirection: 'row',
+                backgroundColor: useThemeColor,
+                justifyContent: 'space-between',
                 alignItems: 'center',
-                justifyContent: 'flex-start',
-                height: 33,
-                width: '98%',
-                overflow: 'hidden',
+                height: 40,
+                width: '104%',
+                borderBottomRightRadius: 4,
+                borderTopRightRadius: 4,
                 position: 'relative',
+                top: -1,
+                left: 0,
+                flexDirection: 'row',
+                shadowColor: 'rgb(0, 0, 0)',
+                shadowOffset: {width: 0, height: 6},
+                shadowOpacity: 1,
+                shadowRadius: 1,
+                elevation: 4,
               }}>
               <View
                 style={{
-                  height: 30,
-                  borderRadius: 5,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  height: 33,
+                  width: '98%',
                   overflow: 'hidden',
-                  paddingHorizontal: 10,
+                  position: 'relative',
                 }}>
-                <FlatList
-                  data={['All', ...uniqueprice]} // Include 'All' button as first item
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyExtractor={item => item}
-                  contentContainerStyle={{borderRadius: 5, overflow: 'hidden'}}
-                  renderItem={({item, index}) => (
-                    <HorizontalFilterListItem item={item} Index={index} />
-                  )}
-                />
-              </View>
-              {/* <SegmentedControl
+                <View
+                  style={{
+                    height: 30,
+                    borderRadius: 5,
+                    overflow: 'hidden',
+                  }}>
+                  <FlatList
+                    data={['All']} // Include 'All' button as first item
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={item => item}
+                    contentContainerStyle={{
+                      borderRadius: 5,
+                      overflow: 'hidden',
+                    }}
+                    renderItem={({item, index}) => (
+                      <View style={[styles.ViewTabs, {width: '98%'}]}>
+                        <View
+                          style={{
+                            flex: 1,
+                            flexDirection: 'row',
+                            // alignItems: 'center',
+                            // justifyContent: 'flex-start',
+                          }}>
+                          <Svg style={{width: 15, height: 21, margin: 5}}>
+                            <SeatBtnIcon
+                              width="100%"
+                              height="100%"
+                              color="#E92E3D"
+                            />
+                          </Svg>
+                          <TouchableOpacity
+                            style={[
+                              styles.tab,
+                              selectSeatScreen === 'SelectSeat' &&
+                                styles.tabActive,
+                              {borderBottomColor: useThemeColor},
+                            ]}
+                            onPress={() =>
+                              onTabsSelectScreenClickPress('SelectSeat')
+                            }>
+                            <Text
+                              style={[
+                                styles.tabTitle,
+                                selectSeatScreen === 'SelectSeat' && {
+                                  fontSize: 15,
+                                  fontWeight: '700',
+                                  color: '#FFFFFF',
+                                  fontFamily: 'Inter',
+                                  fontStyle: 'normal',
+                                  marginBottom: '10%',
+                                  paddingHorizontal: 5,
+                                },
+                              ]}>
+                              {'Select your Seats'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        <View
+                          style={{
+                            flex: 1,
+                            flexDirection: 'row',
+                            marginLeft: 20,
+                            // alignItems: 'center',
+                            // justifyContent: 'center',
+                          }}>
+                          <Svg
+                            style={{
+                              width: 17,
+                              height: 17,
+                              marginHorizontal: 5,
+                              marginVertical: '3%',
+                            }}>
+                            <BoadingBtnIcon
+                              width="100%"
+                              height="100%"
+                              // color={
+                              //   selectSeatScreen === 'BoardingPoint'
+                              //     ? 'rgba(31, 72, 124, 0.5)'
+                              //     : 'white'
+                              // }
+                              // color1={
+                              //   selectSeatScreen === 'BoardingPoint' ? '#1F487C' : '#000000'
+                              // }
+                            />
+                          </Svg>
+                          <TouchableOpacity
+                            onPress={() =>
+                              onTabsSelectScreenClickPress('BoardingPoint')
+                            }
+                            style={[
+                              styles.tab,
+                              selectSeatScreen === 'BoardingPoint' &&
+                                styles.tabActive,
+                              {borderBottomColor: useThemeColor},
+                            ]}>
+                            <Text
+                              style={[
+                                {
+                                  fontSize: 14,
+                                  fontWeight: '200',
+                                  color: '#FFFFFFCC',
+                                  fontFamily: 'Inter',
+                                  fontStyle: 'normal',
+                                  marginBottom: '8%',
+                                },
+                                selectSeatScreen === 'BoardingPoint' && {
+                                  // Any overrides or additional styles
+                                  fontSize: 14, // This is redundant if the same
+                                  fontWeight: '700',
+                                  color: '#FFFFFF',
+                                  fontFamily: 'Inter',
+                                  fontStyle: 'normal',
+                                  marginBottom: '5%',
+                                },
+                              ]}>
+                              {'Boarding & Drop Point'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      // <HorizontalFilterListItem item={item} Index={index} />
+                    )}
+                  />
+                </View>
+                {/* <SegmentedControl
             style= {{height:30,width:'80%'}}
               values={['All', '₹ 500','₹ 500','₹ 500','₹ 500']}
               selectedIndex={selectedIndex}
@@ -713,7 +1043,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               }}
             /> */}
 
-              {/* <View style={styles.infoView}>
+                {/* <View style={styles.infoView}>
               <TouchableOpacity
                 onPress={() => onTabsTopbarClickPress('All')}
                 style={[
@@ -749,81 +1079,80 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 </Text>
               </TouchableOpacity>
             </View> */}
-            </View>
+              </View>
 
-            <View
-              style={{
-                position: 'absolute',
-                right: 0,
-                bottom: -8,
-                backgroundColor: 'transparent',
-                borderStyle: 'solid',
-                borderRightWidth: 8,
-                borderTopWidth: 10,
-                borderRightColor: 'transparent',
-                borderTopColor: useThemeColor,
-              }}>
+              <View
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  bottom: -8,
+                  backgroundColor: 'transparent',
+                  borderStyle: 'solid',
+                  borderRightWidth: 8,
+                  borderTopWidth: 10,
+                  borderRightColor: 'transparent',
+                  borderTopColor: useThemeColor,
+                }}></View>
             </View>
-          </View>
-          <View style={styles.ViewTabs}>
-            <View
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-              }}>
-              <TouchableOpacity onPress={() => setModalVisible(true)}>
-                <Image
-                  source={require('../assets/SeatInfoIcon.png')}
-                  style={{
-                    width: 18,
-                    height: 18,
-                    marginRight: 8,
-                    tintColor:
-                      screenTheme === 'Luxury Coach'
-                        ? '#D89E2F'
-                        : useThemeColor,
-                  }}
-                />
-              </TouchableOpacity>
-              <Svg style={{width: 18, height: 21, marginRight: 5}}>
-                <SeatBtnIcon width="100%" height="100%" color="#E92E3D" />
-              </Svg>
+            {/* <View style={styles.ViewTabs}>
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                }}>
+                <TouchableOpacity onPress={() => setModalVisible(true)}>
+                  <Image
+                    source={require('../assets/SeatInfoIcon.png')}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      marginRight: 8,
+                      tintColor:
+                        screenTheme === 'Luxury Coach'
+                          ? '#D89E2F'
+                          : useThemeColor,
+                    }}
+                  />
+                </TouchableOpacity>
+                <Svg style={{ width: 18, height: 21, marginRight: 5 }}>
+                  <SeatBtnIcon width="100%" height="100%" color="#E92E3D" />
+                </Svg>
 
-              <TouchableOpacity
-                style={[
-                  styles.tab,
-                  selectSeatScreen === 'SelectSeat' && styles.tabActive,
-                  {borderBottomColor: useThemeColor},
-                ]}
-                onPress={() => onTabsSelectScreenClickPress('SelectSeat')}>
-                <Text
+                <TouchableOpacity
                   style={[
-                    styles.tabTitle,
-                    selectSeatScreen === 'SelectSeat' && {
-                      fontSize: 13,
-                      fontWeight: '500',
-                      color: useThemeColor,
-                      fontFamily: 'Inter',
-                      fontStyle: 'normal',
-                    },
-                  ]}>
-                  {'Select your Seats'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <View
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-              <Svg style={{width: 18, height: 18, marginRight: 3}}>
-                <BoadingBtnIcon
-                  width="100%"
-                  height="100%"
+                    styles.tab,
+                    selectSeatScreen === 'SelectSeat' && styles.tabActive,
+                    { borderBottomColor: useThemeColor },
+                  ]}
+                  onPress={() => onTabsSelectScreenClickPress('SelectSeat')}>
+                  <Text
+                    style={[
+                      styles.tabTitle,
+                      selectSeatScreen === 'SelectSeat' && {
+                        fontSize: 13,
+                        fontWeight: '500',
+                        color: useThemeColor,
+                        fontFamily: 'Inter',
+                        fontStyle: 'normal',
+                      },
+                    ]}>
+                    {'Select your Seats'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                <Svg style={{ width: 18, height: 18, marginRight: 3 }}>
+                  <BoadingBtnIcon
+                    width="100%"
+                    height="100%"
                   // color={
                   //   selectSeatScreen === 'BoardingPoint'
                   //     ? 'rgba(31, 72, 124, 0.5)'
@@ -832,258 +1161,58 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                   // color1={
                   //   selectSeatScreen === 'BoardingPoint' ? '#1F487C' : '#000000'
                   // }
-                />
-              </Svg>
-              <TouchableOpacity
-                onPress={() => onTabsSelectScreenClickPress('BoardingPoint')}
-                style={[
-                  styles.tab,
-                  selectSeatScreen === 'BoardingPoint' && styles.tabActive,
-                  {borderBottomColor: useThemeColor},
-                ]}>
-                <Text
-                  style={[
-                    styles.tabTitle,
-                    selectSeatScreen === 'BoardingPoint' && {
-                      fontSize: 13,
-                      fontWeight: '500',
-                      color: useThemeColor,
-                      fontFamily: 'Inter',
-                      fontStyle: 'normal',
-                    },
-                  ]}>
-                  {'Boarding & Drop Point'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          {selectSeatScreen === 'SelectSeat' ? (
-            <View style={{flex: 1, width: '100%'}}>
-              <BookBusSeatView BusSeatsData={null} />
-            </View>
-          ) : (
-            <View style={{flex: 1, width: '100%'}}>
-              <BoardingDropPointView BusBoardingData={null} />
-            </View>
-          )}
-          <View
-            style={{
-              width: '100%',
-
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}>
-            <BackgroundImage
-              source={
-                screenTheme === 'Luxury Coach'
-                  ? require('../assets/luxuryContBg.png')
-                  : ''
-              }
-              style={{
-                height: 60,
-                flexDirection: 'row',
-                margin: 10,
-                // borderColor: '#001938',
-                // borderWidth: 1,
-                // borderRadius: 10,
-                justifyContent: 'center',
-                flex: 1,
-                backgroundColor:
-                  screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor,
-                borderRadius: 10,
-              }}
-              imageStyle={{
-                borderWidth: 1,
-                borderColor:
-                  screenTheme === 'Luxury Coach' ? '#D89E2F' : '#001938',
-                borderRadius: 10,
-              }}>
-              {/* <View style={{ flex: 1, justifyContent: 'center' }}>
-                <View style={{ marginLeft: 15, flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <View style={{ justifyContent: 'flex-start', gap: 5 }}>
-                    <Text
-                      style={{
-                        color: screenTheme === 'Luxury Coach' ? useThemeColor : 'white',
-                        fontWeight: '700',
-                        fontFamily: 'Inter',
-                        fontSize: 15,
-                      }}
-                    >
-                      {selectedSeat.length > 0
-                        ? selectedSeat.map(seat => seat.seatNumber).join(', ') // List seat numbers
-                        : 'No seats selected'}
-                    </Text>
-                    <Text
-                      style={{
-                        fontWeight: '400',
-                        fontSize: 15,
-                        fontFamily: 'Inter',
-                        lineHeight: 16,
-                        color: screenTheme === 'Luxury Coach' ? useThemeColor : 'white',
-                      }}
-                    >
-                      Selected Seat{selectedSeat.length > 1 ? 's' : ''}
-                    </Text>
-                  </View>
-
-                  <View style={{ justifyContent: 'flex-end', gap: 5 }}>
-                    <Text
-                      style={{
-                        alignSelf: 'flex-end',
-                        fontWeight: '700',
-                        fontFamily: 'Inter',
-                        fontSize: 15,
-                        color: screenTheme === 'Luxury Coach' ? useThemeColor : 'white',
-                      }}
-                    >
-                      ₹ {selectedSeat.reduce((total, seat) => total + seat.price, 0)} 
-                    </Text>
-                    <Text
-                      style={{
-                        fontWeight: '400',
-                        fontFamily: 'Inter',
-                        fontSize: 15,
-                        alignSelf: 'flex-end',
-                        fontWeight: '500',
-                        color: screenTheme === 'Luxury Coach' ? useThemeColor : 'white',
-                      }}
-                    >
-                      Price
-                    </Text>
-                  </View>
-                </View>
-              </View> */}
-              <View style={{flex: 1, justifyContent: 'center'}}>
-                <View
-                  style={{
-                    marginLeft: 15,
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                  }}>
-                  <View
-                    style={{justifyContent: 'flex-start', gap: 5, width: 100}}>
-                    <Text
-                      style={{
-                        color:
-                          screenTheme === 'Luxury Coach'
-                            ? useThemeColor
-                            : 'white',
-                        fontWeight: '700',
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                      }}>
-                      {selectedSeat.length > 0
-                        ? selectedSeat
-                            .map(seat => seat.seatNumber) // Get the seat numbers
-                            .reverse() // Reverse the order of the seat numbers
-                            .join(', ') // Join them with a comma
-                        : 'No seats selected'}
-                    </Text>
-                  </View>
-
-                  <View style={{justifyContent: 'flex-end', gap: 5}}>
-                    <Text
-                      style={{
-                        alignSelf: 'flex-end',
-                        fontWeight: '700',
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        color:
-                          screenTheme === 'Luxury Coach'
-                            ? useThemeColor
-                            : 'white',
-                      }}>
-                      {/* ₹ {selectedSeat.reduce((total, seat) => total + seat.price, 0)}  */}
-                      {/* ₹ {totalPrice} */}
-                      {`₹ ${calculateDiscountedFare(
-                        item?.BUS_START_DATE,
-                        totalPrice,
-                        tbs_discount,
-                      )}`}
-                      {/* {console.log(item?.BUS_START_DATE,
-                        totalPrice,
-                        tbs_discount, 'kinnesdf')} */}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={{alignSelf: 'center'}}>
-                <Image
-                  source={require('../assets/Linewhite.png')}
-                  style={{
-                    width: 1.5,
-                    margin: 10,
-                    height: 36,
-                    tintColor:
-                      screenTheme === 'Luxury Coach'
-                        ? useThemeColor
-                        : '#FFFFFF',
-                  }}
-                />
-              </View>
-              <View style={{alignSelf: 'center', paddingRight: 15}}>
+                  />
+                </Svg>
                 <TouchableOpacity
+                  onPress={() => onTabsSelectScreenClickPress('BoardingPoint')}
                   style={[
-                    styles.cornerbutton,
-                    screenTheme === 'Luxury Coach'
-                      ? {backgroundColor: useThemeColor}
-                      : {backgroundColor: '#fff'},
-                  ]}
-                  onPress={() => {
-                    if (
-                      selectedSeat?.length > 0 &&
-                      selectedDroppingPoint?.city?.length > 0 &&
-                      selectedBoardingPoint.city?.length > 0
-                    ) {
-                      navigation.navigate('TravelerScreenDetails', {
-                        screenTheme: screenTheme,
-                        themecolor: useThemeColor,
-                        themeColor2: route.params.themeColor2,
-                        selectedBoardingPoint: selectedBoardingPoint,
-                        selectedDroppingPoint: selectedDroppingPoint,
-                        seatLayout: seatLayout,
-                        selectedBusData: item,
-                        selectedSeat: selectedSeat,
-                        totalPrice: totalPrice,
-                        Journey_Details: Journey_Details,
-                      });
-                    } else if (
-                      selectedSeat?.length > 0 &&
-                      selectSeatScreen === 'BoardingPoint'
-                    ) {
-                      // alert("Please select Boarding and Dropping Point")
-                    } else if (
-                      selectedSeat?.length === 0 &&
-                      selectSeatScreen === 'BoardingPoint'
-                    ) {
-                      onTabsSelectScreenClickPress('SelectSeat');
-                    } else {
-                      onTabsSelectScreenClickPress('BoardingPoint');
-                    }
-                  }}>
+                    styles.tab,
+                    selectSeatScreen === 'BoardingPoint' && styles.tabActive,
+                    { borderBottomColor: useThemeColor },
+                  ]}>
                   <Text
-                    style={{
-                      fontWeight: '400',
-                      color:
-                        screenTheme === 'Luxury Coach'
-                          ? '#FFFFFF'
-                          : useThemeColor,
-                      fontFamily: 'Inter',
-                      fontSize: 18,
-                      lineHeight: 22,
-                    }}>
-                    Continue
+                    style={[
+                      styles.tabTitle,
+                      selectSeatScreen === 'BoardingPoint' && {
+                        fontSize: 13,
+                        fontWeight: '500',
+                        color: useThemeColor,
+                        fontFamily: 'Inter',
+                        fontStyle: 'normal',
+                      },
+                    ]}>
+                    {'Boarding & Drop Point'}
                   </Text>
                 </TouchableOpacity>
               </View>
-            </BackgroundImage>
+            </View> */}
+            <View style={{flex: 1, width: '100%', height:'40%'}}>
+              {selectSeatScreen === 'SelectSeat' ? (
+                <View style={{height: contentHeight}}>
+                  <BookBusSeatView BusSeatsData={null} />
+                </View>
+              ) : (
+                <View style={{height: contentHeight}}>
+                  <BoardingDropPointView BusBoardingData={null} />
+                </View>
+              )}
+            </View>
           </View>
-        </View>
-          : 
-      <View style={{height:200,backgroundColor:"",width:"100%", flexDirection:"row",justifyContent:"center",alignItems:"center"}}><FastImage style={{height:120,width:120,borderRadius:100}} source={require("../assets/Loader/Busloader.gif")}></FastImage></View>
-        }
-     
+        ) : (
+          <View
+            style={{
+              // height: 150,
+              backgroundColor: '',
+              width: '100%',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+            <FastImage
+              style={{height: 120, width: 120, borderRadius: 100}}
+              source={require('../assets/Loader/Busloader.gif')}></FastImage>
+          </View>
+        )}
       </ImageBackground>
     </View>
   );
@@ -1164,25 +1293,31 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
       return;
     }
 
-    // Check if the seat is already selected
     const isSeatSelected = selectedSeat.some(
       s => s.seatNumber === seat.seatNumber,
     );
 
     if (isSeatSelected) {
-      // If already selected, deselect the seat
-      setSelectedSeat(
-        selectedSeat.filter(s => s.seatNumber !== seat.seatNumber),
+      const updatedSeats = selectedSeat.filter(
+        s => s.seatNumber !== seat.seatNumber,
       );
+      setSelectedSeat(updatedSeats);
+
+      if (updatedSeats.length === 0) {
+        closeBottomModal(); // Close modal if no seats selected
+      }
     } else {
-      // Check if there are already 6 seats selected
       if (selectedSeat.length >= 6) {
         Alert.alert('You can only select up to 6 seats.');
         return;
       }
 
-      // Select the seat
-      setSelectedSeat([...selectedSeat, seat]);
+      const updatedSeats = [...selectedSeat, seat];
+      setSelectedSeat(updatedSeats);
+
+      if (updatedSeats.length === 1) {
+        openBottomModal(); // Open modal when first seat is selected
+      }
     }
   };
 
@@ -1267,7 +1402,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
     );
 
     return (
-      <View key={index} style={{marginHorizontal: 5, marginVertical: 6}}>
+      <View key={index} style={{marginHorizontal: 5, marginVertical: 8}}>
         <TouchableOpacity
           style={[
             {flexDirection: 'row', justifyContent: 'center'},
@@ -1275,11 +1410,12 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
           ]}
           onPress={() => handleSeatSelection(seat, index)}
           disabled={seat.isBooked}>
-          <Svg style={{width: 26, height: seat.type === 'SS' ? 35 : 68}}>
+          <Svg style={{width: 30, height: seat.type === 'SS' ? 30 : 77}}>
             {seat.type === 'SS' ? (
               <BusSeater
                 width="100%"
                 height="100%"
+                bottomColor={getSeatBottomColor(seat, index)}
                 fillColor={getSeatFillColor(seat, index)}
                 strokeColor={getSeatColor(seat, index)}
               />
@@ -1287,10 +1423,24 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               <SleeperSeat
                 width="100%"
                 height="100%"
+                borderBottomColor={getSeatBorderBottomColor(seat, index)}
+                borderColor={getSeatBorderColor(seat, index)}
+                bottomColor={getSeatBottomColor(seat, index)}
                 fillColor={getSeatFillColor(seat, index)}
-                strokeColor={getSeatColor(seat, index)}
+                strokeColor={getSleeperColor(seat, index)}
               />
             )}
+            <Text
+              style={{
+                color: 'white',
+                fontSize: 8,
+                fontWeight: 'bold',
+                textAlign: 'center',
+                justifyContent: 'center',
+                marginTop: '-43%',
+              }}>
+              {seat?.price > 0 ? `₹${seat?.price}` : ''}
+            </Text>
           </Svg>
         </TouchableOpacity>
       </View>
@@ -1395,7 +1545,9 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
     );
 
     return (
-      <View key={index} style={{marginHorizontal: 5, marginVertical: 6}}>
+      <View
+        key={index}
+        style={{marginHorizontal: 5, marginVertical: '20%', borderRadius: 20}}>
         <TouchableOpacity
           style={[
             {flexDirection: 'row', justifyContent: 'center'},
@@ -1403,22 +1555,53 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
           ]}
           onPress={() => handleSeatSelection(seat, index)}
           disabled={seat.isBooked}>
-          <Svg style={{width: 26, height: seat.type === 'SS' ? 35 : 68}}>
+          <Svg style={{width: 30, height: seat.type === 'SS' ? 30 : 77}}>
             {seat.type === 'SS' ? (
+              <>
               <BusSeater
                 width="100%"
                 height="100%"
+                bottomColor={getSeatBottomColor(seat, index)}
                 fillColor={getSeatFillColor(seat, index)}
                 strokeColor={getSeatColor(seat, index)}
               />
+              <Text
+              style={{
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: 8,
+                textAlign: 'center',
+                justifyContent: 'center',
+                marginTop: '-39%',
+              }}>
+              {seat?.price > 0 ? `₹${seat?.price}` : ''}
+            </Text>
+            </>
             ) : (
+              <>
               <SleeperSeat
                 width="100%"
                 height="100%"
+                borderBottomColor={getSeatBorderBottomColor(seat, index)}
+                borderColor={getSeatBorderColor(seat, index)}
+                bottomColor={getSeatBottomColor(seat, index)}
                 fillColor={getSeatFillColor(seat, index)}
-                strokeColor={getSeatColor(seat, index)}
+                strokeColor={getSleeperColor(seat, index)}
               />
+               <Text
+              style={{
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: 8,
+                textAlign: 'center',
+                justifyContent: 'center',
+                marginTop: '-42%',
+              }}>
+              {seat?.price > 0 ? `₹${seat?.price}` : ''}
+            </Text>
+            </>
             )}
+            
           </Svg>
         </TouchableOpacity>
       </View>
@@ -1431,93 +1614,95 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
 
   const BookBusSeatView = ({BusSeatsData}) => {
     return (
-      <View
-        style={{
-          flex: 1,
-          flexDirection: 'row',
-          paddingHorizontal: 10,
-          gap: 10,
-          marginTop: 8,
-        }}>
+      <ScrollView>
         <View
           style={{
-            height: '100%',
-            flex: 1.05,
-            borderColor:
-              screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor,
-            borderWidth: 1,
-            borderRadius: 8,
-            backgroundColor: '#FFFFFF',
+            flex: 1,
+            flexDirection: 'row',
+            paddingHorizontal: 10,
+            gap: 10,
+            marginTop: 20,
+            marginBottom: showBottomModal ? '45%' : '30%',
           }}>
-          <View style={{height: 50}}>
-            <View
-              style={{
-                width: '100%',
-                height: 8,
-                flexDirection: 'row',
-                justifyContent: 'space-around',
-                position: 'absolute',
-                marginTop: -7,
-              }}>
-              <Svg style={{width: 14, height: 7}}>
-                <BusLight
-                  width="100%"
-                  height="100%"
-                  color={
-                    screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor
-                  }
-                />
-              </Svg>
-              <Svg style={{width: 14, height: 7}}>
-                <BusLight
-                  width="100%"
-                  height="100%"
-                  color={
-                    screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor
-                  }
-                />
-              </Svg>
+          <View
+            style={{
+              height: '100%',
+              flex: 1.05,
+              borderColor:
+                screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor,
+              borderWidth: 0.9,
+              borderRadius: 20,
+              backgroundColor: '#FFFFFF',
+            }}>
+            <View style={{height: 40}}>
+              <View
+                style={{
+                  width: '100%',
+                  height: 8,
+                  flexDirection: 'row',
+                  justifyContent: 'space-around',
+                  position: 'absolute',
+                  marginTop: -7,
+                }}>
+                <Svg style={{width: 14, height: 7}}>
+                  <BusLight
+                    width="100%"
+                    height="100%"
+                    color={
+                      screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor
+                    }
+                  />
+                </Svg>
+                <Svg style={{width: 14, height: 7}}>
+                  <BusLight
+                    width="100%"
+                    height="100%"
+                    color={
+                      screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor
+                    }
+                  />
+                </Svg>
+              </View>
+              <Text
+                style={{
+                  fontWeight: '400',
+                  marginTop: 5,
+                  color: '#393939',
+                  fontFamily: 'Inter',
+                  fontSize: 10,
+                  textAlign: 'center',
+                  lineHeight: 12,
+                }}>
+                LOWER BERTH ({lowerDeckSeats?.length})
+              </Text>
+              <Image
+                source={require('../assets/stearing.png')}
+                style={{
+                  width: 18,
+                  height: 18,
+                  alignSelf: 'flex-end',
+                  marginTop: -5,
+                  marginRight: 12,
+                }}
+              />
+              <View
+                style={{
+                  width: 15,
+                  height: 22,
+                  marginTop: -8,
+                  backgroundColor:
+                    screenTheme === 'Luxury Coach' ? '#FFEEC9' : '#EEEDED',
+                  left: -1,
+                  borderColor:
+                    screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor,
+                  borderTopWidth: 1,
+                  borderBottomWidth: 1,
+                  borderRightWidth: 1,
+                }}
+              />
             </View>
-            <Text
-              style={{
-                fontWeight: '400',
-                marginTop: 5,
-                color: '#393939',
-                fontFamily: 'Inter',
-                fontSize: 10,
-                textAlign: 'center',
-                lineHeight: 12,
-              }}>
-              LOWER BERTH ({lowerDeckSeats?.length})
-            </Text>
-            <Image
-              source={require('../assets/stearing.png')}
-              style={{
-                width: 18,
-                height: 18,
-                alignSelf: 'flex-end',
-                marginTop: -5,
-                marginRight: 12,
-              }}
-            />
-            <View
-              style={{
-                width: 14,
-                height: 22,
-                marginTop: -8,
-                backgroundColor:
-                  screenTheme === 'Luxury Coach' ? '#FFEEC9' : '#EEEDED',
-                left: -1,
-                borderColor:
-                  screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor,
-                borderTopWidth: 1,
-                borderBottomWidth: 1,
-                borderRightWidth: 1,
-              }}
-            />
-          </View>
-          <View style={[styles.seat_layout_container, {height: validHeight}]}>
-            {/* <View style={{ flex: 1 }} >
+            <View style={[styles.seat_layout_container, {height: validHeight}]}>
+              {/* <View style={{ flex: 1 }} >
 
               <FlatList data={lowerDeckSeats}
                 renderItem={({ item, index }) => <NonSleeperRowView SeatData={item} Index={index} SeatRow={'Row1'} />}
@@ -1529,36 +1714,36 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 renderItem={({ item, index }) => <BottomSeaterRowView SeatData={item} Index={index} />}
               />
             </View> */}
-            <View style={{flexDirection: 'row'}}>
-              <View>
-                {Lower_list_rows1.map((row, rowIndex) => (
-                  <View
-                    key={rowIndex}
-                    style={{flexDirection: 'row', flexWrap: 'wrap'}}>
-                    {row.seats.map((seat, seatIndex) => (
-                      <View key={seatIndex}>
-                        {renderLowerSeat(seat, seatIndex)}
-                      </View>
-                    ))}
-                  </View>
-                ))}
+              <View style={{flexDirection: 'row'}}>
+                <View>
+                  {Lower_list_rows1.map((row, rowIndex) => (
+                    <View
+                      key={rowIndex}
+                      style={{flexDirection: 'row', flexWrap: 'wrap'}}>
+                      {row.seats.map((seat, seatIndex) => (
+                        <View key={seatIndex}>
+                          {renderLowerSeat(seat, seatIndex)}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+                <View style={{marginLeft: 20}}>
+                  {Lower_list_rows.map((row, rowIndex) => (
+                    <View
+                      key={rowIndex}
+                      style={{flexDirection: 'row', flexWrap: 'wrap'}}>
+                      {row.seats.map((seat, seatIndex) => (
+                        <View key={seatIndex}>
+                          {renderLowerSeat(seat, seatIndex)}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
               </View>
-              <View style={{marginLeft: 20}}>
-                {Lower_list_rows.map((row, rowIndex) => (
-                  <View
-                    key={rowIndex}
-                    style={{flexDirection: 'row', flexWrap: 'wrap'}}>
-                    {row.seats.map((seat, seatIndex) => (
-                      <View key={seatIndex}>
-                        {renderLowerSeat(seat, seatIndex)}
-                      </View>
-                    ))}
-                  </View>
-                ))}
-              </View>
-            </View>
 
-            {/* <View>
+              {/* <View>
               <FlatList data={lowerDeckSeats}
                 renderItem={({ item, index }) =>
                   <View
@@ -1575,8 +1760,8 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               />
 
             </View> */}
-          </View>
-          {/* <View style = {{flex:1,paddingHorizontal: 6,paddingBottom:5}}>
+            </View>
+            {/* <View style = {{flex:1,paddingHorizontal: 6,paddingBottom:5}}>
           <FlatList data={lowerLastRow}
            horizontal
            showsHorizontalScrollIndicator={false}
@@ -1584,90 +1769,90 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 renderItem={({ item, index }) => <BottomSeaterRowView index={index}/>}
               />
           </View> */}
-        </View>
-        <View
-          style={{
-            height: '100%',
-            flex: 1,
-            borderRadius: 8,
-            borderColor:
-              screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor,
-            borderWidth: 1,
-            backgroundColor: '#FFFFFF',
-          }}>
-          {/* <View style={{height: 50}}>
-            <View
-              style={{
-                width: '100%',
-                height: 8,
-                flexDirection: 'row',
-                justifyContent: 'space-around',
-                position: 'absolute',
-                marginTop: -7,
-              }}>
-              <Svg style={{width: 14, height: 7}}>
-                <BusLight
-                  width="100%"
-                  height="100%"
-                  color={
-                    screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor
-                  }
-                />
-              </Svg>
-              <Svg style={{width: 14, height: 7}}>
-                <BusLight
-                  width="100%"
-                  height="100%"
-                  color={
-                    screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor
-                  }
-                />
-              </Svg>
-            </View>
-            <Text
-              style={{
-                fontWeight: '400',
-                marginTop: 5,
-                color: '#393939',
-                fontFamily: 'Inter',
-                fontSize: 10,
-                textAlign: 'center',
-                lineHeight: 12,
-              }}>
-              UPPER BERTH ({upperDeckSeats?.length})
-            </Text>
-          </View> */}
-          <View style={[styles.seat_layout_container, {height: validHeight}]}>
-            <View style={{flexDirection: 'row'}}>
-              <View>
-                {upper_list_rows1.map((row, rowIndex) => (
-                  <View
-                    key={rowIndex}
-                    style={{flexDirection: 'row', flexWrap: 'wrap'}}>
-                    {row.seats.map((seat, seatIndex) => (
-                      <View key={seatIndex}>
-                        {renderUpperSeat(seat, seatIndex)}
-                      </View>
-                    ))}
-                  </View>
-                ))}
+          </View>
+          <View
+            style={{
+              height: '100%',
+              flex: 1,
+              borderRadius: 20,
+              borderColor:
+                screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor,
+              borderWidth: 0.9,
+              backgroundColor: '#FFFFFF',
+            }}>
+            <View style={{height: 40}}>
+              <View
+                style={{
+                  width: '100%',
+                  height: 8,
+                  flexDirection: 'row',
+                  justifyContent: 'space-around',
+                  position: 'absolute',
+                  marginTop: -7,
+                }}>
+                <Svg style={{width: 14, height: 7}}>
+                  <BusLight
+                    width="100%"
+                    height="100%"
+                    color={
+                      screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor
+                    }
+                  />
+                </Svg>
+                <Svg style={{width: 14, height: 7}}>
+                  <BusLight
+                    width="100%"
+                    height="100%"
+                    color={
+                      screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor
+                    }
+                  />
+                </Svg>
               </View>
-              <View style={{marginLeft: 20}}>
-                {Upper_list_rows.map((row, rowIndex) => (
-                  <View
-                    key={rowIndex}
-                    style={{flexDirection: 'row', flexWrap: 'wrap'}}>
-                    {row.seats.map((seat, seatIndex) => (
-                      <View key={seatIndex}>
-                        {renderUpperSeat(seat, seatIndex)}
-                      </View>
-                    ))}
-                  </View>
-                ))}
-              </View>
+              <Text
+                style={{
+                  fontWeight: '400',
+                  marginTop: 5,
+                  color: '#393939',
+                  fontFamily: 'Inter',
+                  fontSize: 10,
+                  textAlign: 'center',
+                  lineHeight: 12,
+                }}>
+                UPPER BERTH ({upperDeckSeats?.length})
+              </Text>
             </View>
+            <View style={[styles.seat_layout_container, {height: validHeight}]}>
+              <View style={{flexDirection: 'row'}}>
+                <View>
+                  {upper_list_rows1.map((row, rowIndex) => (
+                    <View
+                      key={rowIndex}
+                      style={{flexDirection: 'row', flexWrap: 'wrap'}}>
+                      {row.seats.map((seat, seatIndex) => (
+                        <View key={seatIndex}>
+                          {renderUpperSeat(seat, seatIndex)}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+                <View style={{marginLeft: 17}}>
+                  {Upper_list_rows.map((row, rowIndex) => (
+                    <View
+                      key={rowIndex}
+                      style={{flexDirection: 'row', flexWrap: 'wrap'}}>
+                      {row.seats.map((seat, seatIndex) => (
+                        <View key={seatIndex}>
+                          {renderUpperSeat(seat, seatIndex)}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              </View>
 
-            {/* {upperDeckSeats?.map((seat, index) =>
+              {/* {upperDeckSeats?.map((seat, index) =>
               seat?.type === "SS" ?
                 <View>
                   <View>
@@ -1745,7 +1930,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                   
                   </TouchableOpacity>
                 </View>)} */}
-            {/* <FlatList
+              {/* <FlatList
         data={rowData}
         renderItem={({ item, index }) => (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -1754,7 +1939,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
         )}
         keyExtractor={(item, index) => index.toString()}
       /> */}
-            {/* <FlatList
+              {/* <FlatList
               data={upperDeckSeats}
               renderItem={({ item, index }) => (
                 <View
@@ -1769,12 +1954,13 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 </View>
               )}
             /> */}
+            </View>
           </View>
         </View>
-      </View>
+      </ScrollView>
     );
   };
-
+  console.log(Lower_list_rows1, 'Lower_list_rows1');
   // const BookBusSeatView = () => {
   //   return (
   //     <View style={styles.container}>
@@ -1893,7 +2079,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               width="100%"
               height="100%"
               fillColor={getSeatFillColor(SeatData)}
-              strokeColor={getSeatColor(SeatData)}
+              strokeColor={getSleeperColor(SeatData)}
             />
           </Svg>
           {/* <Text style={[styles.rowTitle, { paddingTop: 3 }]}>$ 500</Text> */}
@@ -2140,6 +2326,11 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
           <BusSeater
             width="100%"
             height="100%"
+            bottomColor={getSeatBottomColor(
+              SeatData.isSelected,
+              SeatData.isBooked,
+              SeatData.SeatLegend,
+            )}
             fillColor={getSeatFillColor(
               SeatData.isSelected,
               SeatData.isBooked,
@@ -2195,25 +2386,51 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
 
     if (isSelected) {
       // Apply selected seat color (darker or lighter)
+      return 'white';
+    }
+    if (seat?.isBooked === false) {
+      console.log(seat.gender, "seat.gender");
+      
       return seat.gender === 'Unisex'
-        ? '#6cd365'
+      ? '#298121'
+      : seat.gender === 'M'
+      ? '#298121'
+      : '#FF00D5';
+    }else if (seat?.isBooked) {
+      return seat.gender === 'Unisex'
+        ? '#B0B0B0'
         : seat.gender === 'M'
-        ? '#5aa657'
-        : '#D887D7';
+        ? '#0088D3'
+        : '#FF00D5';
+    }
+
+    return '#B0B0B0';
+  };
+
+  const getSleeperColor = (seat, index) => {
+    const isSelected = selectedSeat.some(s => s.seatNumber === seat.seatNumber);
+
+    if (isSelected) {
+      // Apply selected seat color (darker or lighter)
+      return seat.gender === 'Unisex'
+        ? '#298121'
+        : seat.gender === 'M'
+        ? '#298121'
+        : '#FF00D5';
     }
 
     if (seat?.isBooked === false) {
       return seat.gender === 'Unisex'
-        ? '#6cd365'
-        : seat.gender === 'M'
-        ? '#84ec7a'
-        : '#D887D7';
+      ? '#298121'
+      : seat.gender === 'M'
+      ? '#298121'
+      : '#FF00D5';
     } else if (seat?.isBooked) {
       return seat.gender === 'Unisex'
         ? '#B0B0B0'
         : seat.gender === 'M'
-        ? '#99E0FF'
-        : '#F0B4FF';
+        ? '#0088D3'
+        : '#FF00D5';
     }
 
     return '#B0B0B0';
@@ -2225,18 +2442,93 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
     if (isSelected) {
       // Apply selected seat fill color (lighter)
       return seat.gender === 'Unisex'
-        ? '#FFF'
+        ? '#298121'
         : seat.gender === 'M'
-        ? '#84EC7A'
-        : '#FFEDFF';
+        ? '#298121'
+        : '#FF70E7';
     }
 
     if (seat?.isBooked) {
       return seat.gender === 'Unisex'
-        ? '#FFF'
+        ? '#D8D8D8'
         : seat.gender === 'M'
-        ? '#D9F5FF'
-        : '#FFEDFF';
+        ? '#CCF6FF'
+        : '#FFE9FE';
+    }
+    return '#FFF';
+  };
+
+  const getSeatBottomColor = (seat, index) => {
+    const isSelected = selectedSeat.some(s => s.seatNumber === seat.seatNumber);
+
+    if (isSelected) {
+      // Apply selected seat fill color (lighter)
+      return seat.gender === 'Unisex'
+        ? '#298121'
+        : seat.gender === 'M'
+        ? '#298121'
+        : '#FF70E7';
+    }
+
+    if (seat?.isBooked) {
+      return seat.gender === 'Unisex'
+        ? '#D8D8D8'
+        : seat.gender === 'M'
+        ? '#CCF6FF'
+        : '#FFE9FE';
+    }
+    if (seat?.isBooked === false) {
+      return seat.gender === 'Unisex'
+        ? '#298121'
+        : seat.gender === 'M'
+        ? '#298121'
+        : '#FF70E7';
+    }
+    return '#FFF';
+  };
+
+  const getSeatBorderColor = (seat, index) => {
+    const isSelected = selectedSeat.some(s => s.seatNumber === seat.seatNumber);
+
+    if (isSelected) {
+      // Apply selected seat fill color (lighter)
+      return 'white';
+    }
+
+    if (seat?.isBooked) {
+      return seat.gender === 'Unisex'
+        ? '#D8D8D8'
+        : seat.gender === 'M'
+        ? '#CCF6FF'
+        : '#FFE9FE';
+    }
+    if (seat?.isBooked === false) {
+      return 'white';
+    }
+    return '#FFF';
+  };
+
+  const getSeatBorderBottomColor = (seat, index) => {
+    const isSelected = selectedSeat.some(s => s.seatNumber === seat.seatNumber);
+
+    if (isSelected) {
+      // Apply selected seat fill color (lighter)
+      return 'white';
+    }
+
+    if (seat?.isBooked) {
+      return seat.gender === 'Unisex'
+        ? '#298121'
+        : seat.gender === 'M'
+        ? '#0088D3'
+        : '#FF00D5';
+    }
+    if (seat?.isBooked === false) {
+      return seat.gender === 'Unisex'
+        ? '#298121'
+        : seat.gender === 'M'
+        ? '#0088D3'
+        : '#FF00D5';
     }
     return '#FFF';
   };
@@ -2261,6 +2553,18 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
   // const handleSelect = item => {
   //   setSelectedPoint(item.place_id);
   // };
+  // Set the first item as selected when the component mounts
+  useEffect(() => {
+    if (boardingPoints?.length > 0) {
+      setSelectedBoardingPoint(boardingPoints[0]);
+    }
+  }, [boardingPoints]);
+
+  useEffect(() => {
+    if (droppingPoints?.length > 0) {
+      setSelectedDroppingPoint(droppingPoints[0]);
+    }
+  }, [droppingPoints]);
 
   const handleSelectBoarding = point => {
     const updatedBoardingPoints = [
@@ -2312,6 +2616,10 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               screenTheme === 'Luxury Coach' ? '#ffffff' : useThemeColor,
             borderWidth: screenTheme === 'Luxury Coach' ? 0 : 1,
           },
+          {
+            borderBottomWidth: 0.3,
+            borderBottomColor: '#ccc', // or useThemeColor or any color you prefer
+          },
         ]}
         onPress={() => handleSelectBoarding(SeatData)}>
         <Text
@@ -2323,6 +2631,8 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
           {SeatData.city}
         </Text>
         <Text
+          numberOfLines={2}
+          ellipsizeMode="tail"
           style={[
             styles.rowPointLandmark,
             isSelected && {color: useThemeColor},
@@ -2353,6 +2663,10 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               screenTheme === 'Luxury Coach' ? '#ffffff' : useThemeColor,
             borderWidth: screenTheme === 'Luxury Coach' ? 0 : 1,
           },
+          {
+            borderBottomWidth: 0.3,
+            borderBottomColor: '#ccc', // or useThemeColor or any color you prefer
+          },
         ]}
         onPress={() => onSelect(SeatData)}>
         <Text
@@ -2364,6 +2678,8 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
           {SeatData.city}
         </Text>
         <Text
+          numberOfLines={2}
+          ellipsizeMode="tail"
           style={[
             styles.rowPointLandmark,
             isSelected && {color: useThemeColor},
@@ -2383,6 +2699,8 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
           paddingHorizontal: 10,
           gap: 10,
           justifyContent: 'space-between',
+          marginTop: 20,
+          marginBottom: showBottomModal ? 100 : 50,
         }}>
         {/* Boarding Points Section */}
         <View
@@ -2390,7 +2708,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
             height: '100%',
             overflow: 'hidden',
             flex: 1,
-            borderRadius: 8,
+            borderRadius: 20,
             backgroundColor: '#FFFFFF',
           }}>
           <View
@@ -2418,6 +2736,8 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 contentContainerStyle={{flexGrow: 1}}
                 extraData={selectedBoardingPoint} // Prevents scroll from jumping
               />
+              {/* Custom Scrollbar */}
+              {renderCustomScrollbar()}
             </View>
           </View>
         </View>
@@ -2428,7 +2748,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
             height: '100%',
             overflow: 'hidden',
             flex: 1,
-            borderRadius: 8,
+            borderRadius: 20,
             backgroundColor: '#FFFFFF',
           }}>
           <View
@@ -2521,6 +2841,11 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 Step 1 of 3
               </Text>
             </View>
+            <View>
+              <TouchableOpacity onPress={handleOpen}>
+                <IconSVG name="seatDetails" width={34} height={34} />
+              </TouchableOpacity>
+            </View>
           </View>
         </ImageBackground>
         <ScrollView>
@@ -2570,7 +2895,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                           fontFamily: 'Inter',
                           lineHeight: 12,
                           textAlign: 'left',
-                          color: {themeheaderFontColor},
+                          color: '#393939',
                         }}>
                         Bus Operator
                       </Text>
@@ -2583,9 +2908,13 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                           fontWeight: '600',
                           numberOfLines: 1, // Shows only 1 line of text
                           ellipsizeMode: 'tail',
-                          color: {themeheaderFontColor},
+                          color: '#393939',
                         }}>
-                        Orange Tours
+                        {item?.Traveler_Agent_Name
+                          ? item.Traveler_Agent_Name.length > 25
+                            ? item.Traveler_Agent_Name.slice(0, 24) + '...'
+                            : item.Traveler_Agent_Name
+                          : ''}
                       </Text>
                     </View>
                     {/* <Image
@@ -2651,6 +2980,354 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
       />
+      <View
+        style={{
+          position: 'absolute',
+          bottom: showBottomModal ? 50 : 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+        }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            backgroundColor: '#FFFFFF',
+            paddingHorizontal: 10,
+            paddingTop: 10,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            shadowColor: 'rgba(99, 95, 95, 0.81)',
+            shadowOffset: {width: 0, height: -2},
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+            elevation: 5,
+            zIndex: 1,
+          }}>
+          {viewListAry?.map(item => {
+            const iconToUse =
+             screenTheme === 'Luxury Coach' ?
+                 item.icons.selected
+                : item.icons.normal;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                //onPress={() => handleButtonPress(item.task)}
+                style={{
+                  width: '23%',
+                  alignItems: 'center',
+                  backgroundColor:
+                    selectedButton === item.task ? '#1F487C33' : '#FFFFFF',
+                  paddingVertical: 5,
+                  borderRadius: 20,
+                  marginBottom: 10,
+                }}
+                onPress={() => {
+                  setStatusVisible(true);
+                  //setSelectedButton(item.task);
+                  }}>
+                <IconSVG name={iconToUse} width={36} height={36} />
+
+                <Text
+                  style={{
+                    color: selectedButton === item.task ? '#1F487C' : '#1F487C',
+                    fontSize: 12,
+                    textAlign: 'center',
+                  }}>
+                  {item.task}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <ViewMoreScreen
+          visible={statusVisible}
+          busData={busData}
+          jdate={busData?.BUS_START_DATE}
+          tbs_discount={tbs_discount}
+          busPrice={busData?.Fare}
+          onClose={() => {
+            setStatusVisible(false);
+            setSelectedButton(null);
+          }}
+          Data={'Trip seats and details'}
+          seatLayoutPage={true}
+          selectedButton={selectedButton}
+          setSelectedButton={setSelectedButton}
+          selectBusType={screenTheme}
+        />
+      </View>
+
+      {showBottomModal && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            transform: [{translateY: slideAnim}],
+            zIndex: 100,
+          }}>
+          {/* Your existing View with BackgroundImage */}
+          <View
+            style={{
+              width: '100%',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+            <View
+              style={{
+                width: '100%',
+
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+              <BackgroundImage
+                source={
+                  screenTheme === 'Luxury Coach'
+                    ? require('../assets/luxuryContBg.png')
+                    : ''
+                }
+                style={{
+                  height: 60,
+                  flexDirection: 'row',
+                  //margin: 10,
+                  // borderColor: '#001938',
+                  // borderWidth: 1,
+                  // borderRadius: 10,
+                  justifyContent: 'center',
+                  flex: 1,
+                  backgroundColor:
+                    screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor,
+                  //borderRadius: 10,
+                }}
+                imageStyle={{
+                  borderWidth: 1,
+                  borderColor:
+                    screenTheme === 'Luxury Coach' ? '#D89E2F' : '#001938',
+                  borderRadius: 10,
+                }}>
+                {/* <View style={{ flex: 1, justifyContent: 'center' }}>
+                <View style={{ marginLeft: 15, flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <View style={{ justifyContent: 'flex-start', gap: 5 }}>
+                    <Text
+                      style={{
+                        color: screenTheme === 'Luxury Coach' ? useThemeColor : 'white',
+                        fontWeight: '700',
+                        fontFamily: 'Inter',
+                        fontSize: 15,
+                      }}
+                    >
+                      {selectedSeat.length > 0
+                        ? selectedSeat.map(seat => seat.seatNumber).join(', ') // List seat numbers
+                        : 'No seats selected'}
+                    </Text>
+                    <Text
+                      style={{
+                        fontWeight: '400',
+                        fontSize: 15,
+                        fontFamily: 'Inter',
+                        lineHeight: 16,
+                        color: screenTheme === 'Luxury Coach' ? useThemeColor : 'white',
+                      }}
+                    >
+                      Selected Seat{selectedSeat.length > 1 ? 's' : ''}
+                    </Text>
+                  </View>
+
+                  <View style={{ justifyContent: 'flex-end', gap: 5 }}>
+                    <Text
+                      style={{
+                        alignSelf: 'flex-end',
+                        fontWeight: '700',
+                        fontFamily: 'Inter',
+                        fontSize: 15,
+                        color: screenTheme === 'Luxury Coach' ? useThemeColor : 'white',
+                      }}
+                    >
+                      ₹ {selectedSeat.reduce((total, seat) => total + seat.price, 0)} 
+                    </Text>
+                    <Text
+                      style={{
+                        fontWeight: '400',
+                        fontFamily: 'Inter',
+                        fontSize: 15,
+                        alignSelf: 'flex-end',
+                        fontWeight: '500',
+                        color: screenTheme === 'Luxury Coach' ? useThemeColor : 'white',
+                      }}
+                    >
+                      Price
+                    </Text>
+                  </View>
+                </View>
+              </View> */}
+                <View style={{flex: 1, justifyContent: 'center'}}>
+                  <View
+                    style={{
+                      marginLeft: 15,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                    }}>
+                    <View
+                      style={{
+                        justifyContent: 'flex-start',
+                        gap: 5,
+                        width: 100,
+                      }}>
+                      <Text
+                        style={{
+                          color:
+                            screenTheme === 'Luxury Coach'
+                              ? useThemeColor
+                              : 'white',
+                          fontWeight: '700',
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                        }}>
+                        {selectedSeat.length > 0
+                          ? selectedSeat
+                              .map(seat => seat.seatNumber) // Get the seat numbers
+                              .reverse() // Reverse the order of the seat numbers
+                              .join(', ') // Join them with a comma
+                          : ''}
+                      </Text>
+                      <Text
+                        style={{
+                          color:
+                            screenTheme === 'Luxury Coach'
+                              ? useThemeColor
+                              : 'white',
+                          fontWeight: '700',
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                        }}>
+                        Selected Seat
+                      </Text>
+                    </View>
+
+                    <View
+                      style={{
+                        justifyContent: 'flex-end',
+                        gap: 5,
+                        marginLeft: -5,
+                      }}>
+                      <Text
+                        style={{
+                          alignSelf: 'flex-end',
+                          fontWeight: '700',
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color:
+                            screenTheme === 'Luxury Coach'
+                              ? useThemeColor
+                              : 'white',
+                        }}>
+                        {/* ₹ {selectedSeat.reduce((total, seat) => total + seat.price, 0)}  */}
+                        {/* ₹ {totalPrice} */}
+                        {`₹ ${calculateDiscountedFare(
+                          item?.BUS_START_DATE,
+                          totalPrice,
+                          tbs_discount,
+                        ).toFixed(2)}`}
+                        {/* {console.log(item?.BUS_START_DATE,
+                        totalPrice,
+                        tbs_discount, 'kinnesdf')} */}
+                      </Text>
+                      <Text
+                        style={{
+                          alignSelf: 'flex-end',
+                          fontWeight: '900',
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color:
+                            screenTheme === 'Luxury Coach'
+                              ? useThemeColor
+                              : 'white',
+                        }}>
+                        Price
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={{alignSelf: 'center'}}>
+                  <Image
+                    source={require('../assets/Linewhite.png')}
+                    style={{
+                      width: 1.5,
+                      margin: 10,
+                      height: 36,
+                      tintColor:
+                        screenTheme === 'Luxury Coach'
+                          ? useThemeColor
+                          : '#FFFFFF',
+                    }}
+                  />
+                </View>
+                <View style={{alignSelf: 'center', paddingRight: 15}}>
+                  <TouchableOpacity
+                    style={[
+                      styles.cornerbutton,
+                      screenTheme === 'Luxury Coach'
+                        ? {backgroundColor: useThemeColor}
+                        : {backgroundColor: '#fff'},
+                    ]}
+                    // onPress={() => {
+                    //   if (
+                    //     selectedSeat?.length > 0 &&
+                    //     selectedDroppingPoint?.city?.length > 0 &&
+                    //     selectedBoardingPoint.city?.length > 0
+                    //   ) {
+                    //     navigation.navigate('TravelerScreenDetails', {
+                    //       screenTheme: screenTheme,
+                    //       themecolor: useThemeColor,
+                    //       themeColor2: route.params.themeColor2,
+                    //       selectedBoardingPoint: selectedBoardingPoint,
+                    //       selectedDroppingPoint: selectedDroppingPoint,
+                    //       seatLayout: seatLayout,
+                    //       selectedBusData: item,
+                    //       selectedSeat: selectedSeat,
+                    //       totalPrice: totalPrice,
+                    //       Journey_Details: Journey_Details,
+                    //     });
+                    //   } else if (
+                    //     selectedSeat?.length > 0 &&
+                    //     selectSeatScreen === 'BoardingPoint'
+                    //   ) {
+                    //     // alert("Please select Boarding and Dropping Point")
+                    //   } else if (
+                    //     selectedSeat?.length === 0 &&
+                    //     selectSeatScreen === 'BoardingPoint'
+                    //   ) {
+                    //     onTabsSelectScreenClickPress('SelectSeat');
+                    //   } else {
+                    //     onTabsSelectScreenClickPress('BoardingPoint');
+                    //   }
+                    // }}
+                    onPress={handleContinuePress}>
+                    <Text
+                      style={{
+                        fontWeight: '400',
+                        color:
+                          screenTheme === 'Luxury Coach'
+                            ? '#FFFFFF'
+                            : useThemeColor,
+                        fontFamily: 'Inter',
+                        fontSize: 18,
+                        lineHeight: 22,
+                      }}>
+                      Continue
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </BackgroundImage>
+            </View>
+          </View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 };
@@ -2834,11 +3511,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   tabTitle: {
-    fontSize: 13,
-    color: '#000000',
-    fontWeight: '300',
+    fontSize: 15,
+    fontWeight: '200',
+    color: '#FFFFFFCC',
     fontFamily: 'Inter',
     fontStyle: 'normal',
+    marginBottom: '10%',
+    paddingHorizontal: 5,
   },
   tabTitleActive: {
     fontSize: 13,
@@ -2952,13 +3631,56 @@ const styles = StyleSheet.create({
     marginLeft: 155,
   },
   seat_layout_container: {
-    backgroundColor: '#FFF',
+    //backgroundColor: '#FFF',
     overflow: 'hidden',
     paddingHorizontal: 5,
     marginBottom: 5,
     flexDirection: 'row', // Change this to 'column' to allow vertical wrapping
     flexWrap: 'wrap',
     justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  legendTable: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  legendHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  infoSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoText: {
+    color: '#1F487C',
+    fontWeight: '600',
+  },
+  headerText: {
+    fontWeight: '700',
+    color: '#1F487C',
+  },
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  rowTitle: {
+    width: 120,
+    fontWeight: '500',
+  },
+  seatIcon: {
+    width: 24,
     alignItems: 'center',
   },
 });

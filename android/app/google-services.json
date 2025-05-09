@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "358198261652",
+    "project_id": "thebusstand-176ec",
+    "storage_bucket": "thebusstand-176ec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:358198261652:android:60a7824d1c83fc3e254181",
+        "android_client_info": {
+          "package_name": "com.thebusstandapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "358198261652-b4dger8lk1ep5ft4elk91i0ifb1je95t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.thebusstandapp",
+            "certificate_hash": "fffd089ab70dc1b5185d75953eae01aadb54b5ac"
+          }
+        },
+        {
+          "client_id": "358198261652-knv8475jo1c241jrmvma7kmp0qofvj8r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyB4BBWBiytXHiHEHUSiZ5YDdV9HGN5Os"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "358198261652-knv8475jo1c241jrmvma7kmp0qofvj8r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

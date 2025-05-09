@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -11,6 +11,8 @@ import {
   Text,
   FlatList,
   Platform,
+  StatusBar,
+  BackHandler,
 } from 'react-native';
 import { Svg } from 'react-native-svg';
 import BackWhite from '../assets/BackWhite';
@@ -18,7 +20,7 @@ const { width } = Dimensions.get('window');
 const numColumns = 2; // Number of columns
 const itemWidth = (width - 40) / numColumns;
 import FastImage from 'react-native-fast-image';
-import { useRoute } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { GetTBSAvailableService } from '../API/TBSapi/Home/Home';
 import { useDispatch } from 'react-redux';
 import Advertisement from '../component/Advertisement/Advertisement';
@@ -51,6 +53,27 @@ const BusTypeDetails = ({ navigation }) => {
     },
   ];
 
+
+  const backNavigationClick = page => {
+    //props.navigation.popToTop();
+    props.navigation.pop(2);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        navigation.navigate('HomeStack'); // change 'Home' to your desired screen
+        return true; // prevent default behavior
+      };
+
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () =>
+        BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [navigation])
+  );
+
+
   const dispatch = useDispatch()
   // Select all options for the Regular Bus when the app opens
   const [selectedBusesRegular, setSelectedBusesRegular] = useState([]); // Pre-select all items in Regular Bus
@@ -61,9 +84,10 @@ const BusTypeDetails = ({ navigation }) => {
   const Journey_Details = route.params?.state?.Source_Ids;
   const Journey_Date = route.params?.state?.Journey_Date;
 
+  console.log(Journey_Details, 'Journey_Details')
+  // console.log("Regular :", selectedBusesRegular, "Luxury :", selectedBusesLuxury, "Normal :", selectedBusesAll, 'selectedBusesAll');
 
 
-  console.log("Regular :", selectedBusesRegular, "Luxury :", selectedBusesLuxury, "Normal :", selectedBusesAll, 'selectedBusesAll');
   // Handle selecting a bus option
   const handleSelectBus = item => {
     const updateSelection = prevSelection => {
@@ -146,6 +170,7 @@ const BusTypeDetails = ({ navigation }) => {
 
     return (
       <View style={{ padding: 5 }}>
+
         <TouchableOpacity onPress={() => handleSelectBus(item)}>
           <ImageBackground
             resizeMode="contain"
@@ -196,6 +221,11 @@ const BusTypeDetails = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        translucent={true}
+        backgroundColor="#1F487C"
+      />
       <ImageBackground
         source={require('../assets/appBackgroundImage.png')}
         style={styles.fullScreenBackground}>
@@ -209,7 +239,8 @@ const BusTypeDetails = ({ navigation }) => {
               }}>
               <TouchableOpacity
                 style={styles.backBtn}
-                onPress={() => navigation.goBack()}>
+                // onPress={() => navigation.navigate('HomeStack')}>
+                onPress={() => backNavigationClick()}>
                 <View style={{ flex: 1, justifyContent: 'center' }}>
                   <Svg style={{ width: 30, height: 30, borderRadius: 100 }}>
                     <BackWhite width="100%" height="100%" />
@@ -292,7 +323,8 @@ const BusTypeDetails = ({ navigation }) => {
                       Journey_Date: Journey_Date,
                       selectedBusesAll: selectedBusesAll,
                       selectedBusesRegular: selectedBusesRegular,
-                      selectedBusesLuxury: selectedBusesLuxury
+                      selectedBusesLuxury: selectedBusesLuxury,
+                      selectedBusType: isToggled
                     }
                   })
                 }
@@ -309,7 +341,7 @@ const BusTypeDetails = ({ navigation }) => {
                   style={styles.fullSizeImage}
                 />
               ) : (
-                <Advertisement pageId={4}/>
+                <Advertisement pageId={4} />
               )}
             </View>
           </View>
@@ -367,6 +399,7 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   fullScreenBackground: {
+    marginTop: 35,
     height: '100%',
     width: '100%',
   },
@@ -449,14 +482,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   imageContainer: {
-    marginVertical:20,
-    marginHorizontal:10,
+    marginVertical: 20,
+    marginHorizontal: 10,
     height: 250,
     overflow: 'hidden',
     // borderStyle: 'dashed',
     borderRadius: 10,
     borderWidth: 1,
-
     backgroundColor: '#fff',
   },
   fullSizeImage: {

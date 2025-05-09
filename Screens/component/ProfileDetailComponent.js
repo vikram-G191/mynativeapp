@@ -48,7 +48,7 @@ const ProfileDetailComponent = ({ name, mobile, since }) => {
                     <Text style={styles.text1}>{since}</Text>
                 </View>
             </ImageBackground>
-            <View style={{
+            {/* <View style={{
                 backgroundColor: 'rgba(255, 255, 255, 0.5)',
                 justifyContent: 'flex-start',
                 alignItems: 'flex-start',
@@ -66,7 +66,7 @@ const ProfileDetailComponent = ({ name, mobile, since }) => {
                     <Text style={styles.text3}>767 kms</Text>
                     <Text style={styles.text4}>Travelled</Text>
                 </View>
-            </View>
+            </View> */}
         </View>
     );
 };

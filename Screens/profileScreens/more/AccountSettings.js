@@ -6,13 +6,14 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import { Svg } from 'react-native-svg';
 import BackWhite from "../../assets/BackWhite";
-import { clearUserId } from "../../Utils/STorage";
+import { clearAllAsync, clearUserId } from "../../Utils/STorage";
 
 const AccountSettings = ({ navigation }) => {
 
     const [modalVisible, setModalVisible] = useState(false);
     const closeModal = async () => {
-        clearUserId()
+        // clearUserId()
+        clearAllAsync()
         navigation.navigate('BottomTabs');
     };
     return (

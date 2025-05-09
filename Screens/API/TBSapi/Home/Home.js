@@ -1,28 +1,63 @@
 import axios from "axios";
 import Toast from 'react-native-toast-message';
-import { GET_BUS_FILTERS, GET_BUS_LIST, GET_STATIONS } from "../../../Redux/Store/Type";
+import { GET_BUS_FILTERS, GET_BUS_LIST, GET_CURRENT_THEME, GET_STATIONS, TOP_ROUTE_LIST } from "../../../Redux/Store/Type";
 import { REACT_APP_API_URL } from '@env'
+import { storeOffersList } from "../../../Utils/STorage";
 
 
 let lastToastTime = 0; // Keep track of the last time a toast was shown
 const TOAST_DELAY = 2000; // Delay in milliseconds (2 seconds)
 
-// const apiUrl = REACT_APP_API_URL;
-// const apiUrl = `http://192.168.90.47:4006/api`
-const apiUrl = `https://thebusstand.com/api`
-const apicrm = process.env.REACT_APP_CRM_API_URL;
+// const apiUrl = process.env.REACT_APP_API_URL;
+// const apiUrl = process.env.REACT_APP_API_URL;
+// const apiurltow = process.env.REACT_APP_API_URL
+// const apicrm = `https://crm.thebusstand.com/api`
 
-// console.log(apiUrl, "axioserror")
+// const apiUrl = `http://192.168.90.47:4001/api`
+// const apicrm = `http://192.168.90.47:4000/api`
+
+const apiUrl = `https://thebusstand.com/api`
+const apicrm = `https://crm.thebusstand.com/api`
+
+
+// // console.log(apiUrl, "axioserror")
+// export const GetStations = async (dispatch, val, module) => {
+//     try {
+//         const response = await axios.get(`${apiUrl}/getstation/$`)
+//         dispatch({ type: GET_STATIONS, payload: response.data });
+//         // console.log(response.data, "station response");
+//     } catch (err) {
+//         handleError(err);
+//     }
+// };
+
 export const GetStations = async (dispatch, val, module) => {
+    // console.log(val, 'getting_station')
+    // console.log(apiUrl, 'checking_Home_env_file')
     try {
         const response =
             val === ""
                 ? await axios.get(`${apiUrl}/getStation/$`)
                 : await axios.get(`${apiUrl}/getStation/${val}`);
         dispatch({ type: GET_STATIONS, payload: response.data });
-        // console.log(response.data, "station response");
     } catch (err) {
         handleError(err);
+    }
+};
+
+
+export const GetTopBusRoutes = async (dispatch, id) => {
+    try {
+        const response = await axios.get(`${apiUrl}/top-bus-routes`);
+        dispatch({
+            type: TOP_ROUTE_LIST,
+            payload: response?.data?.data,
+        });
+        // console.log(response.data, "footerresponse");
+        return response.data;
+    } catch (error) {
+        handleError(error);
+        // return null;
     }
 };
 
@@ -32,8 +67,8 @@ export const GetTBSAvailableService = async (
     getselecteddate
 ) => {
     const payload = {
-        from_sourceID: Journey_Details.from_Id,
-        to_sourceID: Journey_Details.to_Id,
+        from_sourceID: Journey_Details.from_Id ? Journey_Details.from_Id : Journey_Details.from_id,
+        to_sourceID: Journey_Details.to_Id ? Journey_Details.to_Id : Journey_Details.to_id,
         getselecteddate: getselecteddate
     };
 
@@ -51,7 +86,7 @@ export const GetTBSAvailableService = async (
         });
         dispatch({ type: GET_BUS_LIST, payload: response?.data?.services });
         dispatch({ type: GET_BUS_FILTERS, payload: response?.data?.services });
-
+        // console.log(response.data, "availe_response");
         // console.log("App Link", response);
         return response.data;
     } catch (error) {
@@ -61,6 +96,36 @@ export const GetTBSAvailableService = async (
     //     dispatch({ type: BUSLIST_LOADER, payload: false });
     //     sessionStorage.setItem("busListLoader", false);
     // }
+};
+
+
+
+export const GetDiscountOffers = async () => {
+    // console.log(apicrm, 'apicrm_apicrm')
+    try {
+        const response = await axios.get(`${apicrm}/livediscountandpromotion/8`);
+        // console.log(response);
+
+        const parsedData = response.data; // Already JSON
+        storeOffersList(response.data.response);
+
+        return parsedData;
+    } catch (error) {
+        handleError(error);
+    }
+};
+
+export const GetCurrentTheme = async (dispatch) => {
+    try {
+        const response = await axios.get(`${apicrm}/themes-statusId/2`);
+        // console.log(response.data[0], "current theme");
+        dispatch({ type: GET_CURRENT_THEME, payload: response.data[0] });
+        return response.data[0];
+    } catch (error) {
+        // toast.warning(err.message)
+        handleError(error);
+        // return null
+    }
 };
 
 const handleError = (error) => {

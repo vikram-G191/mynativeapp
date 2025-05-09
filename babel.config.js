@@ -8,5 +8,6 @@ module.exports = {
         path: '.env',         // This is the default .env file
       },
     ],
+    'transform-inline-environment-variables', // Inline environment variables
   ],
 };

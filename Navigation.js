@@ -1,5 +1,5 @@
 import React from 'react';
-import { View,Image,Text,ImageBackground } from 'react-native';
+import { View, Image, Text, ImageBackground } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import 'react-native-gesture-handler';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -40,6 +40,8 @@ import HomeStack from './Screens/bottomnavigation/HomeStack';
 import Addpassengericon from './Screens/assets/Addpassengericon';
 import AddpassangerScreen from './Screens/profileScreens/mydetails/addpassangerScreen';
 import FakeTripListScreen from './Screens/MainScreen/FakeTripListScreen';
+import LoginPassengerDetails from './Screens/LoginScreen/LoginPassengerDetails';
+import PhoneNumberScreen from './Screens/LoginScreen/PhoneNumberScreen';
 
 const Stack = createStackNavigator();
 
@@ -51,6 +53,7 @@ const Navigation = () => {
                 flex: 1,
                 justifyContent: 'center',
                 alignItems: 'center',
+                marginLeft: 6
             }}>
                 <Text style={{
                     fontSize: 20,
@@ -76,7 +79,7 @@ const Navigation = () => {
         <NavigationContainer initialRouteName="SpalshScreen">
             <Stack.Navigator>
                 <Stack.Screen name="SpalshScreen" options={{ headerShown: false }} component={SpalshScreen} />
-                <Stack.Screen name="HomeScreen" options={{ headerShown: false }} component={HomeScreen} />
+                {/* <Stack.Screen name="HomeScreen" options={{ headerShown: false }} component={HomeScreen} /> */}
                 <Stack.Screen name="TripListScreen" options={{ headerShown: false, gestureEnabled: false, }} component={TripListScreen} />
                 <Stack.Screen name="TravelerScreenDetails" options={{ headerShown: false }} component={TravelerScreenDetails} />
                 <Stack.Screen name="CardDesignScreen" options={{ headerShown: false }} component={CardDesignScreen} />
@@ -108,6 +111,8 @@ const Navigation = () => {
                 <Stack.Screen name="BusTypeDetails" component={BusTypeDetails} options={{ headerShown: false, headerTitle: 'Our AI is finding you the Best Price!', headerLeft: '', headerTitleStyle: { color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 20 }, headerStyle: { backgroundColor: '#1F487C' } }} />
                 <Stack.Screen name="AddpassangerScreen" component={AddpassangerScreen} options={{ headerShown: false, headerTitle: 'Our AI is finding you the Best Price!', headerLeft: '', headerTitleStyle: { color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 20 }, headerStyle: { backgroundColor: '#1F487C' } }} />
                 <Stack.Screen name="HomeStack" options={{ headerShown: false }} component={HomeStack} />
+                <Stack.Screen name='LoginPassengerDetails' component={LoginPassengerDetails} options={{ headerShown: false }}/>
+                <Stack.Screen name='PhoneNumberScreen' component={PhoneNumberScreen}/>
 
 
                 <Stack.Screen name="SearchAI" component={SearchAI} options={{

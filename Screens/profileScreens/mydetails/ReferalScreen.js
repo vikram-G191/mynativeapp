@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   SectionList,
+  Clipboard,
 } from 'react-native';
 import { Svg } from 'react-native-svg';
 import Modal from 'react-native-modal';
@@ -19,10 +20,7 @@ import HeadWhite from '../../assets/HeadArrow';
 import backgroundImage from '../../assets/home_bg.png'; // Replace with your actual image path
 import TicketLine from '../../assets/TicketLine';
 import Rectbaground from '../../assets/Rectbaground.png'; // Replace with your actual image path
-
 import Refferalbg from '../../assets/Refferalbg.png'; // Replace with your actual image path
-
-
 import BusticketSeprateLine from '../../assets/BusticketSeprateLine';
 import BackWhite from '../../assets/BackWhite';
 import BookingHistoryDetailScreen from '../../BookingScreen/BookingHistoryDetailScreen';
@@ -32,6 +30,9 @@ import Xicone from '../../assets/Xicone';
 import ShareIcone1 from '../../assets/ShareIcone1';
 import Referallistprofile from '../../assets/Referallistprofile';
 import CopyIcon from '../../assets/CopyIcon';
+import { useFocusEffect } from '@react-navigation/native';
+import { getUserId } from '../../Utils/STorage';
+import { GetRefferalCode, GetReffralContent } from '../../API/TBSapi/MyAccount/Referral';
 const ReferalScreen = (props) => {
   const [currentTab, setCurrentTab] = useState('UPCOMING');
   var listingtype = 'UPCOMING';
@@ -41,6 +42,22 @@ const ReferalScreen = (props) => {
     { name: 'a' },
 
   ]);
+
+  const getContentCode = async () => {
+    const response = await GetReffralContent();
+    setGetContent(response);
+    console.log(response, "responce content");
+  };
+
+  useEffect(() => {
+    // setSpinning(true);
+
+    getContentCode();
+  }, []);
+
+
+
+  
 
 
   const data = [
@@ -55,12 +72,40 @@ const ReferalScreen = (props) => {
   ];
 
 
-
   const [modalVisible, setModalVisible] = useState(false);
+  const [userId, setUserId] = useState()
+  const [getCode, setGetCode] = useState("");
+  const [getContent, setGetContent] = useState("");
+  const [expandedText, setExpandedText] = useState(null);
+
+  // Toggle function to handle expanding and collapsing text
+  const toggleText = (index) => {
+    setExpandedText(expandedText === index ? null : index); // Close if already open, else open the clicked one
+  };
+
+
+  const termsConditions = getContent?.["referernt&c"];
+
+  // console.log(getCode, 'getContent')
+
+
+  useFocusEffect(
+    useCallback(() => {
+      getUserId().then((id) => {
+        setUserId(id);
+        console.log("User_id_refferal", id);
+      });
+    }, [])
+  );
+
+  const copyToClipboard = () => {
+    Clipboard.setString(getCode?.referral_code);  // This copies the value of getCode to the clipboard
+    // alert(`Code copied to clipboard! ${getCode?.referral_code}`); // Optional: Display an alert confirming the copy
+  };
 
 
   const onClickTopOptionListAction = currentTab => {
-    console.log('Clicked history Button123');
+    // console.log('Clicked history Button123');
     // setLoading(true);
     setCurrentTab(currentTab);
 
@@ -99,24 +144,38 @@ const ReferalScreen = (props) => {
   }
   const myListEmpty = () => {
     return (
-      <View style={{ flex: 1, margin: 20 }}>
+      <View style={{ flex: 1, marginTop: 20, marginHorizontal: 20 }}>
         <ScrollView>
-
-
           <View style={{ flexDirection: 'column' }}>
             <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F487C' }}>How it works :</Text>
             <View style={{ flexDirection: 'column', }}>
-
-
               <View style={{ flexDirection: 'row', flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 10, gap: 5 }}>
                 <View>
                   <Image style={{ width: 60, height: 60 }} source={require('../../assets/Shareiconeref.png')} />
 
                 </View>
                 <View style={{ flexDirection: 'column', flex: 1, justifyContent: 'center', gap: 2.5 }}>
-                  <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                  {/* <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
                     Share your unique referral code with your friends and family to earn referral benefits. The more you share, the more benefits you get!
-                  </Text>
+                  </Text> */}
+                  <View>
+                    <TouchableOpacity onPress={() => toggleText(1)}>
+                      {/* {expandedText === 1 ? */}
+                      {/* <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                        {`${getContent?.procedure[0]?.text}`}
+                      </Text> */}
+                      <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                        {getContent?.procedure?.[0]?.text || 'Default text here'}
+                      </Text>
+
+                      {/* : <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                          {`${getContent &&
+                            getContent?.procedure[0]?.text?.slice(0, 150)
+                            }...`}
+                        </Text>
+                      } */}
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
 
@@ -126,9 +185,14 @@ const ReferalScreen = (props) => {
 
                 </View>
                 <View style={{ flexDirection: 'column', flex: 1, justifyContent: 'center', gap: 2.5 }}>
-                  <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                  {/* <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
                     Your friend must install the Tbs app and enter your unique code while signing up.
-                  </Text>
+                  </Text> */}
+                  <TouchableOpacity onPress={() => toggleText(2)}>
+                    <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                      {getContent?.procedure?.[1]?.text ? getContent.procedure[1].text : null}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
               <View style={{ flexDirection: 'row', flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 10, gap: 5 }}>
@@ -137,8 +201,20 @@ const ReferalScreen = (props) => {
 
                 </View>
                 <View style={{ flexDirection: 'column', flex: 1, justifyContent: 'center', gap: 2.5 }}>
-                  <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
-                    Once they successfully sign up, they will receive a voucher of ₹250 instant discount + ₹250 cashback that can be availed on their first ever booking.                  </Text>
+                  {/* <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                    Once they successfully sign up, they will receive a voucher of ₹250 instant discount + ₹250 cashback that can be availed on their first ever booking.
+                  </Text> */}
+                  <TouchableOpacity onPress={() => toggleText(3)}>
+                    {expandedText === 3 ? (
+                      <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                        {getContent?.procedure?.[2]?.text || 'Default text here'}
+                      </Text>
+                    ) : (
+                      <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                        {getContent?.procedure?.[2]?.text?.slice(0, 150) || 'Default text here'}...
+                      </Text>
+                    )}
+                  </TouchableOpacity>
                 </View>
               </View>
               <View style={{ flexDirection: 'row', flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 10, gap: 5 }}>
@@ -147,24 +223,27 @@ const ReferalScreen = (props) => {
 
                 </View>
                 <View style={{ flexDirection: 'column', flex: 1, justifyContent: 'center', gap: 2.5 }}>
-                  <Text style={{ fontSize: 12, left: 4, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
-                    After the completion of their first travel you will receive a discount voucher worth ₹150.                          </Text>
+                  {/* <Text style={{ fontSize: 12, left: 4, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                    After the completion of their first travel you will receive a discount voucher worth ₹150.
+                  </Text> */}
+                  <TouchableOpacity onPress={() => toggleText(4)}>
+                    <Text style={{ fontSize: 12, left: 5, fontWeight: '600', lineHeight: 14.25, color: '#1F487C', textAlign: 'left' }}>
+                      {getContent?.procedure?.[3]?.text || 'Default text here'}
+                    </Text>
+
+                  </TouchableOpacity>
                 </View>
               </View>
-
-
-
             </View>
-            <Text style={{ alignSelf: 'center', fontSize: 16, fontWeight: '600', color: '#1F487C' }}>Terms & Conditions</Text>
+            <TouchableOpacity onPress={() => setModalVisible(true)}>
+              <Text style={{ alignSelf: 'center', fontSize: 16, fontWeight: '600', color: '#1F487C' }}>Terms & Conditions</Text>
+            </TouchableOpacity>
             <View style={{ alignSelf: 'center' }}>
 
 
               <TouchableOpacity >
                 <View style={styles.squareBorder2}>
-
-
                   <Text style={styles.searchText}>Refer Now</Text>
-
                 </View>
               </TouchableOpacity>
             </View>
@@ -359,6 +438,22 @@ const ReferalScreen = (props) => {
     return <Item item={item} index={index} />;
   };
 
+  useEffect(() => {
+    if (!userId) return;
+  
+    const getcode = async () => {
+      try {
+        const response = await GetRefferalCode(userId);
+        setGetCode(response);
+        console.log(response, "isuxdfoidsf");
+      } catch (error) {
+        console.error('Error fetching referral code:', error);
+      }
+    };
+  
+    getcode();
+  }, [userId]);
+
   return (
     <SafeAreaView style={styles.container} edges={['right', 'left', 'top']}>
       <View style={styles.bgView}>
@@ -404,7 +499,7 @@ const ReferalScreen = (props) => {
 
                 <View>
                   <View style={{
-                    width: 129,
+                    width: 160,
                     height: 33,
                     backgroundColor: '#04B9EF',
                     alignItems: 'center',
@@ -417,7 +512,7 @@ const ReferalScreen = (props) => {
                     borderTopWidth: 1, // Set border width for top border
                     borderStyle: 'dashed', // Set the border style to dotted
                   }}>
-                    <Text style={{ fontSize: 16, color: 'white', fontWeight: '500' }}>MI487661</Text>
+                    <Text style={{ fontSize: 16, color: 'white', fontWeight: '500' }}>{getCode?.referral_code}</Text>
 
                     {/* <ImageBackground
                       source={Rectbaground}
@@ -447,21 +542,23 @@ const ReferalScreen = (props) => {
 
 
                   </ImageBackground> */}
-                  <View style={{
-                    backgroundColor: '#1F487C',
-                    height: 33,
-                    width: 80,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: 10,
-                    flexDirection: 'row', borderRadius: 5
-                  }}>
-                    <Svg style={{ height: 21, width: 21 }}>
-                      <CopyIcon width="100%" height="100%" />
-                    </Svg>
-                    <Text style={{ fontSize: 16, color: 'white', fontWeight: '500' }}>Copy</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', padding: 2, gap: 2, marginTop: 5, }}>
+                  <TouchableOpacity onPress={copyToClipboard}>
+                    <View style={{
+                      backgroundColor: '#1F487C',
+                      height: 33,
+                      width: 80,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: 10,
+                      flexDirection: 'row', borderRadius: 5
+                    }}>
+                      <Svg style={{ height: 21, width: 21 }}>
+                        <CopyIcon width="100%" height="100%" />
+                      </Svg>
+                      <Text style={{ fontSize: 16, color: 'white', fontWeight: '500' }}>Copy</Text>
+                    </View>
+                  </TouchableOpacity>
+                  {/* <View style={{ flexDirection: 'row', padding: 2, gap: 2, marginTop: 5, }}>
                     <Svg style={{ height: 21, width: 21 }}>
                       <WhatsappIcone width="100%" height="100%" />
                     </Svg>
@@ -474,7 +571,7 @@ const ReferalScreen = (props) => {
                     <Svg style={{ height: 21, width: 21 }}>
                       <ShareIcone1 width="100%" height="100%" />
                     </Svg>
-                  </View>
+                  </View> */}
 
 
                 </View>
@@ -482,7 +579,6 @@ const ReferalScreen = (props) => {
 
               <View style={{
                 flexDirection: 'row',
-
                 justifyContent: 'space-between', // Distributes children with space between them
                 alignItems: 'center',
               }}>
@@ -534,7 +630,7 @@ const ReferalScreen = (props) => {
                   {'Refer and Earn'}
                 </Text>
               </TouchableHighlight>
-              <TouchableHighlight
+              {/* <TouchableHighlight
                 onPress={() => onClickTopOptionListAction('COMPLETED')}
                 underlayColor="transparent"
                 style={[
@@ -548,7 +644,7 @@ const ReferalScreen = (props) => {
                   ]}>
                   {'Referral History'}
                 </Text>
-              </TouchableHighlight>
+              </TouchableHighlight> */}
               {/* <TouchableHighlight
                 onPress={() => onClickTopOptionListAction('CANCELLED')}
                 underlayColor="transparent"
@@ -584,13 +680,46 @@ const ReferalScreen = (props) => {
 
           </ImageBackground>
         </View>
-        <BookingHistoryDetailScreen
+        {/* <BookingHistoryDetailScreen
           visible={modalVisible}
           onClose={() => setModalVisible(false)}
           isTripStatus={currentTab}
           Data={"Trip seats and details"}
-        />
+        /> */}
       </View>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity
+            style={{ flex: 1, width: '100%', marginTop: 20 }}
+            onPress={() => setModalVisible(false)}></TouchableOpacity>
+          <View style={styles.modalContent}>
+            <ImageBackground
+              source={backgroundImage}
+              style={{ width: '100%', resizeMode: 'contain', shadowRadius: 10 }}>
+              <View style={{ width: '100%', height: '75%' }}>
+                <View>
+                  <Text style={{ color: '#1F487C', fontWeight: '500', fontSize: 20, textAlign: 'center', marginTop: 5 }}>Terms and Condition</Text>
+                </View>
+                <View style={{ height: '165%' }}>
+                  <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+                    <View style={{ flex: 1, justifyContent: 'space-evenly', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 }}>
+                      <Text style={{ color: '#1F487C' }}>
+                        {termsConditions}
+                      </Text>
+                    </View>
+                  </ScrollView>
+                </View>
+              </View>
+            </ImageBackground>
+          </View>
+        </View>
+
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -603,6 +732,21 @@ const styles = StyleSheet.create({
     padding: 5,
     flexDirection: 'row',
     backgroundColor: '#1F487C',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0)',
+    marginBottom: 0
+  },
+  modalContent: {
+    backgroundColor: '#fcfaf5',
+    width: '100%',
+    height: '85%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    bottom: '-3%'
   },
   topImageBg: {
     width: '100%',

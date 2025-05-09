@@ -1,174 +1,206 @@
-import { useState } from "react";
-import {  View, Text, StyleSheet, ScrollView, ImageBackground, Image, TouchableOpacity } from "react-native";
-import { WebView } from 'react-native-webview';
-import { Svg } from 'react-native-svg';
-import BackWhite from "../../assets/BackWhite";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ImageBackground,
+  TouchableOpacity,
+} from 'react-native';
+import {WebView} from 'react-native-webview';
+import {Svg} from 'react-native-svg';
+import BackWhite from '../../assets/BackWhite';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {GetFooterTabs} from '../../API/TBSapi/MyAccount/MyBooking';
+import {useDispatch, useSelector} from 'react-redux';
 
-const CMS = ({ route, navigation }) => {
+const CMS = ({route, navigation}) => {
+  const {data} = route.params;
+  const businfo = useSelector(state => state?.productReducer?.tbs_info);
+  console.log(businfo?.terms_conditions, 'businfo');
 
-    console.log('route', route)
+  const dispatch = useDispatch();
 
-    return (
-        <SafeAreaView style={styles.container} edges={['right', 'left', 'top']}>
-            <ImageBackground source={require('../../assets/appBackgroundImage.png')} style={{ height: '100%', width: '100%' }}>
+  useEffect(() => {
+    GetFooterTabs(dispatch);
+  }, []);
 
-                <View style={styles.bgView}>
+  const displayText =
+    data === 'privacy'
+      ? businfo?.privacy_policy
+      : data === 'about'
+      ? businfo?.about_us
+      : data === 'terms' || data === 'termsconditions'
+      ? businfo?.terms_conditions
+      : data === 'user' || data === 'useragreement'
+      ? businfo?.user_agreement
+      : '';
 
-                    <View style={styles.navigationView}>
-                        <ImageBackground
-                            source={require('../../assets/HeadBg.png')}
-                            style={styles.topImageBg}
-                            imageStyle={{
-                                resizeMode: 'cover',
-                            }}>
-                            <TouchableOpacity
-                                style={styles.backBtn}
-                                onPress={() => navigation.goBack()}>
-                                <View style={{ flex: 1, justifyContent: 'center' }}>
-                                    <Svg style={{ width: 30, height: 30, borderRadius: 100 }}>
-                                        <BackWhite width="100%" height="100%" />
-                                    </Svg>
-                                </View>
-                            </TouchableOpacity>
-                            <View style={styles.topViewTitle}>
-                                <Text style={styles.topTitle}>Know About Us</Text>
-                            </View>
-                        </ImageBackground>
-                    </View>
-                    {
-                        route?.params?.data === 'privacy' ? <WebView source={{ uri: 'https://reactnative.dev/' }} style={{ flex: 1 }} /> :
-                            route?.params?.data === 'terms' ? <WebView source={{ uri: 'https://www.npmjs.com/package/react-native-webview' }} style={{ flex: 1 }} /> :
-                                route?.params?.data === 'user' ? <WebView source={{ uri: 'https://www.npmjs.com/package/rn-range-slider' }} style={{ flex: 1 }} /> : <View></View>
-                    }
-
+  return (
+    <SafeAreaView style={styles.container} edges={['right', 'left', 'top']}>
+      <ImageBackground
+        source={require('../../assets/appBackgroundImage.png')}
+        style={{height: '100%', width: '100%'}}>
+        <View style={styles.bgView}>
+          {/* Header */}
+          <View style={styles.navigationView}>
+            <ImageBackground
+              source={require('../../assets/HeadBg.png')}
+              style={styles.topImageBg}
+              imageStyle={{resizeMode: 'cover'}}>
+              <TouchableOpacity
+                style={styles.backBtn}
+                onPress={() => navigation.goBack()}>
+                <View style={{flex: 1, justifyContent: 'center'}}>
+                  <Svg style={{width: 30, height: 30, borderRadius: 100}}>
+                    <BackWhite width="100%" height="100%" />
+                  </Svg>
                 </View>
+              </TouchableOpacity>
+              <View style={styles.topViewTitle}>
+                <Text style={styles.topTitle}>
+                  {data === 'privacy'
+                    ? 'Know About Us'
+                    : data === 'about'
+                    ? 'About Us'
+                    : data === 'terms' || data === 'termsconditions'
+                    ? 'Know About Us'
+                    : data === 'user' || data === 'useragreement'
+                    ? 'Kow About us'
+                    : ''}
+                </Text>
+              </View>
             </ImageBackground>
-        </SafeAreaView>
-    )
-}
+          </View>
+
+          {/* Content */}
+          {data === 'privacy' || data === 'about' ? (
+            <View style={{padding: 20}}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  color: '#1F487C',
+                  marginBottom: 10,
+                  fontWeight: '800',
+                }}>
+                {'Privacy Policy:'}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 1,
+                  color: '#1F487C',
+                  marginBottom: 10,
+                  fontWeight: '700',
+                  justifyContent:"center",
+                }}>
+                {data === 'privacy' ? 'Privacy Policy:' : 'About Us:'}
+              </Text>
+              <ScrollView
+                contentContainerStyle={{paddingBottom: 100}} // adjusts scroll space
+                showsVerticalScrollIndicator={true}
+                indicatorStyle="red">
+                
+                <Text style={{fontSize: 14, color: '#1F487C',textAlign:"justify"}}>
+                  {displayText}
+                </Text>
+              </ScrollView>
+            </View>
+          ) : data === 'useragreement' || data === 'user' ? (
+            <View style={{padding: 20}}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  color: '#1F487C',
+                  marginBottom: 10,
+                  fontWeight: '800',
+                //  textAlign: 'justify',
+                }}>
+                {'User Agreement:'}
+              </Text>
+              <ScrollView
+                contentContainerStyle={{paddingBottom: 100}} // adjusts scroll space
+                showsVerticalScrollIndicator={true}>
+                <Text style={{fontSize: 14, color: '#1F487C',textAlign:"justify"}}>
+                  {displayText}
+                </Text>
+              </ScrollView>
+            </View>
+          ) : data === 'termsconditions' || data === 'terms' ? (
+            <View style={{padding: 20}}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  color: '#1F487C',
+                  marginBottom: 10,
+                  fontWeight: '800',
+                  // backgroundColor:"red",
+                  
+                }}>
+                {'Terms & Conditions'}
+              </Text>
+              {/* <ScrollView style={{backgroundColor: 'red',marginBottom:50,}}> */}
+              <ScrollView
+                contentContainerStyle={{paddingBottom: 100}} // adjusts scroll space
+                showsVerticalScrollIndicator={true}>
+                <Text style={{fontSize: 14, color: '#1F487C',textAlign:"justify",paddingHorizontal:5}}>
+                  {displayText}
+                </Text>
+              </ScrollView>
+            </View>
+          ) : (
+            <View style={{padding: 20}}>
+              <Text style={{fontSize: 14, color: '#000'}}>
+                No content found.
+              </Text>
+            </View>
+          )}
+        </View>
+      </ImageBackground>
+    </SafeAreaView>
+  );
+};
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#1F487C',
-    },
-    bgView: {
-        flex: 1,
-        backgroundColor: '#E5FFF1'
-    },
-    titleText: {
-        fontSize: 14,
-        fontWeight: '400',
-        color: '#1F487C',
-        lineHeight: 16,
-    },
-    imgStyle: {
-        height: 25,
-        width: 22
-    },
-    backBtn: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    navigationView: {
-        width: '100%',
-        padding: 5,
-        flexDirection: 'row',
-        backgroundColor: '#1F487C',
-    },
-    topImageBg: {
-        width: '100%',
-        height: 40,
-        flexDirection: 'row',
-        paddingHorizontal: 5,
-        overflow: 'hidden',
-        position: 'relative',
-        bottom: 5,
-    },
-    topImageBg1: {
+  container: {
+    flex: 1,
+    backgroundColor: '#1F487C',
+  },
+  bgView: {
+    flex: 1,
+    backgroundColor: '#E5FFF1',
+  },
+  navigationView: {
+    width: '100%',
+    padding: 5,
+    flexDirection: 'row',
+    backgroundColor: '#1F487C',
+  },
+  topImageBg: {
+    width: '100%',
+    height: 40,
+    flexDirection: 'row',
+    paddingHorizontal: 5,
+    overflow: 'hidden',
+    position: 'relative',
+    bottom: 5,
+  },
+  backBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topViewTitle: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    marginRight: 30,
+  },
+  topTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: 'white',
+  },
+});
 
-        height: 110,
-        flexDirection: 'row',
-
-    },
-    backBtn: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    topViewTitle: {
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0)',
-        marginRight: 30,
-    },
-    topTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        textAlign: 'right',
-        color: 'white',
-    },
-    headerView: {
-        padding: 20,
-        display: 'flex',
-        gap: 20
-    },
-    busView: {
-        //    backgroundColor: '#000',
-        alignItems: 'center'
-    },
-    contentView: {
-        backgroundColor: '#fff',
-        borderRadius: 15,
-        padding: 20,
-        display: 'flex',
-        gap: 20
-    },
-    contentText: {
-        fontSize: 12,
-        fontWeight: '400',
-        color: '#1F487C',
-        lineHeight: 20,
-        textAlign: 'justify'
-    },
-    privacyView: {
-        padding: 20,
-        gap: 25
-    },
-    titleText: {
-        fontSize: 14,
-        fontWeight: '400',
-        color: '#1F487C',
-        lineHeight: 16,
-    },
-    imgStyle: {
-        height: 25,
-        width: 22
-    },
-    contentView: {
-        padding: 20,
-        width: '100%',
-        justifyContent: 'center',
-        alignItems: 'stretch',
-    },
-    verticalContent: {
-        padding: 20,
-        flex: 1,
-        flexDirection: 'row',
-        height: 500,
-        justifyContent: 'center',
-        alignItems: 'stretch',
-    },
-    subHeader: {
-        backgroundColor: "#2089dc",
-        color: "white",
-        textAlign: "center",
-        paddingVertical: 5,
-        marginBottom: 10
-    }
-})
-
-export default CMS
+export default CMS;

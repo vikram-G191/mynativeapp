@@ -328,16 +328,15 @@ const TripListStyle = StyleSheet.create({
     height: 40,
     marginTop: 10,
   },
-  tripDateTxt: { fontSize: 12, lineHeight: 15, fontFamily: 'Inter', fontWeight: '400', color: '#1F487C', textAlign: 'left' },
-  LuxtripDateTxt: { fontSize: 12, lineHeight: 15, fontFamily: 'Inter', fontWeight: '400', color: '#393939', textAlign: 'left' },
+  tripDateTxt: { fontSize: 10, lineHeight: 15, fontFamily: 'Inter', fontWeight: '400', color: '#1F487C', textAlign: 'center' },
+  LuxtripDateTxt: { fontSize: 10, lineHeight: 15, fontFamily: 'Inter', fontWeight: '400', color: '#393939', textAlign: 'center' },
   tripStartTimeTxt: {
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 19, fontFamily: 'Inter', fontWeight: '700', color: '#1F487C', textAlign: 'left'
   },
   LuxtripStartTimeTxt: {
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 19, fontFamily: 'Inter', fontWeight: '700', color: '#393939', textAlign: 'left'
- 
   },
   tripDropView: {
     flex: 1,
@@ -357,7 +356,6 @@ const TripListStyle = StyleSheet.create({
     fontFamily: 'Inter',
     fontWeight: '600',
     lineHeight: 12,
- 
     fontSize: 10,
   },
   tripDropDateView: {
@@ -367,10 +365,10 @@ const TripListStyle = StyleSheet.create({
     alignItems: 'center',
   },
   tripDropDateTxt: {
-    fontSize: 14, lineHeight: 19, fontFamily: 'Inter', fontWeight: '700', color: '#1F487C', textAlign: 'right'
+    fontSize: 13, lineHeight: 19, fontFamily: 'Inter', fontWeight: '700', color: '#1F487C', textAlign: 'right'
   },
   LuxtripDropDateTxt: {
-    fontSize: 14, lineHeight: 19, fontFamily: 'Inter', fontWeight: '700', color: '#393939', textAlign: 'right'
+    fontSize: 13, lineHeight: 19, fontFamily: 'Inter', fontWeight: '700', color: '#393939', textAlign: 'right'
   },
   tripViewDivide: {
     justifyContent: 'center',
@@ -426,7 +424,7 @@ const TripListStyle = StyleSheet.create({
   seatCountTxt: {
     fontSize: 11,
     textAlign: 'justify',
-    color: '#C62B2B',
+    // color: '#C62B2B',
     fontWeight: '600',
     fontFamily: 'Inter',
     lineHeight: 14,
@@ -434,7 +432,7 @@ const TripListStyle = StyleSheet.create({
   a_seats: {
     fontSize: 12,
     textAlign: 'center',
-    color: '#C62B2B',
+    // color: '#C62B2B',
     fontWeight: '600',
     fontFamily: 'Inter',
     lineHeight: 14,

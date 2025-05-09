@@ -11,10 +11,11 @@ import {
   Share,
   KeyboardAvoidingView,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { Svg, Path } from 'react-native-svg';
 import Swiper from 'react-native-swiper';
-import Modal from 'react-native-modal';
+// import Modal from 'react-native-modal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList, ScrollView } from 'react-native-gesture-handler';
 import LinearGradient from 'react-native-linear-gradient';
@@ -61,17 +62,21 @@ import { calculateDiscountedFare } from '../component/Tbs_Disocunt';
 import { CURRENT_PERCENTAGE, GET_BUS_FILTERS } from '../Redux/Store/Type';
 import Advertisement from '../component/Advertisement/Advertisement';
 import { Skeleton } from '@rneui/themed';
+// import useBusFilter from '../Hooks/UseBusFilter';
 // import { LuxuryFind } from '../component/BusType';
+// import PlacechangeModal from '../models/Placechangemodal';
 
 const screenWidth = Dimensions.get('window').width;
 
-const TripListScreen = props => {
-
-  const Bus_List = useSelector(state => state?.productReducer?.get_buslist)
-  const Bus_Filter_List = useSelector(state => state?.productReducer?.get_buslist_filter)
+const TripListScreen = (props) => {
+  const { navigation } = props;
+  const Bus_List = useSelector(state => state?.productReducer?.get_buslist);
+  const Bus_Filter_List = useSelector(
+    state => state?.productReducer?.get_buslist_filter,
+  );
   // const tbs_discount = useSelector(state => state?.productReducer?.live_per)
-  const tbs_discount = useSelector(state => state?.productReducer?.live_per)
-  
+  const tbs_discount = useSelector(state => state?.productReducer?.live_per);
+  // console.log(Bus_Filter_List, 'Bus_Filter_List')
 
   // console.log(Bus_Filter_List, "Bus_Filter_List_luxury_find")
   const [BannerData, setBannerData] = useState([]);
@@ -80,38 +85,186 @@ const TripListScreen = props => {
 
   const [busColor, setBusColor] = useState('#04B9EF');
 
-  const [busColor1, setBusColor1] = useState('#04B9EF')
+  const [busColor1, setBusColor1] = useState('#04B9EF');  
+  const [pickuptime, setPickUpTime] = useState('');
+  const [selectedOptions, setSelectedOptions] = useState({});
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [successLoader, setSuccessLoader] = useState("")
+  const [selectedButton, setSelectedButton] = useState(null);
+  const [luxBus, setLuxBus] = useState('')
 
-  const dispatch = useDispatch()
+console.log(successLoader,"successLoader");
+
+
+  const dispatch = useDispatch();
 
   const route = useRoute(); // ✅ Use useRoute() to access params
 
-  const Journey_Details = route.params?.state?.Journey_Details || 'No Source ID'; // ✅ Ensure default value to prevent errors
+  // const Journey_Details = route.params?.state?.Source_Ids;
+  // const Journey_Date = route.params?.state?.Journey_Date;
 
+  const Journey_Details =
+    route.params?.state?.Journey_Details || 'No Source ID'; // ✅ Ensure default value to prevent errors
+
+  console.log(Journey_Details, 'Journey_Details');
   const Journey_Date = route.params?.state?.Journey_Date;
 
   const formattedDate = moment(Journey_Date).format('DD MMM');
 
-  const selectedBusesRegular = route?.params?.state?.selectedBusesRegular
+  const selectedBusesRegular = route?.params?.state?.selectedBusesRegular;
 
-  const selectedBusesLuxury = route?.params?.state?.selectedBusesLuxury
+  const selectedBusesLuxury = route?.params?.state?.selectedBusesLuxury;
 
-  const selectedBusesAll = route?.params?.state?.selectedBusesAll
+  const selectedBusesAll = route?.params?.state?.selectedBusesAll;
 
-  const [regularBus, setRegularBus] = useState()
+  const selectedBusType = route?.params?.state?.selectedBusType;
 
-  const [luxuryBus, setLuxuryBus] = useState()
+  const [selectBusType, setselectedBustype] = useState();
 
-  const [normalBus, setNormalBus] = useState()
+  const [placeModalVisible, setPlaceModalVisible] = useState(false);
 
-  // console.log("regularBus :", regularBus, "luxuryBus:", luxuryBus, "normalBus:", normalBus, "Journey_Details")
-  // console.log("regularBus :", selectedBusesRegular, "luxuryBus:", selectedBusesLuxury, "normalBus:", selectedBusesAll, "selectedBusesAll")
+  // console.log(selectBusType, 'selectBusTypeee');
 
   useEffect(() => {
-    setLuxuryBus(selectedBusesLuxury)
-    setRegularBus(selectedBusesRegular)
-    setNormalBus(selectedBusesAll)
-  }, [])
+
+    const getBusList = async () => {
+      if (Journey_Date && Journey_Details !== null) {
+        const response = await GetTBSAvailableService(dispatch, Journey_Details, Journey_Date);
+        // console.log(response, "successLoader");
+        setSuccessLoader(response.status)
+      }
+    }
+    getBusList()
+  }, []);
+
+  useEffect(() => {
+    if (selectedBusType) {
+      setselectedBustype(selectedBusType);
+    }
+  }, []);
+  const [bustype, setbustype] = useState();
+
+  const [isSeater, setIsSeater] = useState(false);
+
+  const [isSleeper, setIsSleeper] = useState(false);
+
+  console.log(isSeater, isSleeper, "seatersleeperlog");
+
+
+  const [isAC, setIsAC] = useState(false);
+
+  const [isNonAC, setIsNonAC] = useState(false);
+
+  const [isDay, setIsDay] = useState('');
+
+  console.log(isDay, 'is__day');
+
+  const [isNight, setIsNight] = useState('');
+
+  const [filteredTimes, setFilteredTimes] = useState([1, 2, 3, 4]); // Default times
+  const [filterCount, setFilterCount] = useState(0);
+
+  // const [pickuptime, setPickUpTime] = useState('');
+
+  // const [droptime, setDropTime] = useState('');
+
+  // setbustype(selectedBusType);
+
+  const [regularBus, setRegularBus] = useState([]);
+  const [luxuryBus, setLuxuryBus] = useState([]);
+  const [normalBus, setNormalBus] = useState([]);
+
+  const addValue = (arr, value) => {
+    if (!arr.includes(value)) {
+      return [...arr, value];
+    }
+    return arr;
+  };
+
+  const removeValue = (arr, value) => {
+    return arr.filter(item => item !== value);
+  };
+
+  // console.log("regularBus :", isSeater, "luxuryBus:", luxuryBus, "Journey_Details")
+
+  // Initial mount
+  useEffect(() => {
+    setLuxuryBus(selectedBusesLuxury);
+    setRegularBus(selectedBusesRegular);
+    setNormalBus(selectedBusesAll);
+  }, []);
+
+  useEffect(() => {
+    if (
+      normalBus?.includes('3') ||
+      luxuryBus?.includes('3') ||
+      regularBus?.includes('3')
+    ) {
+      // if(isSleeper === false && isSleeper != isSeater){
+      setIsSeater(true);
+      // setIsSeater(isSleeper === false ? true : false)
+      // }
+    }
+
+    if (
+      normalBus?.includes('4') ||
+      luxuryBus?.includes('4') ||
+      regularBus?.includes('4')
+    ) {
+      // if(isSeater === false && isSeater != isSleeper){
+      setIsSleeper(true)
+      // setIsSleeper(isSeater === false ? true : false);
+      // }
+    }
+    if (
+      normalBus?.includes('2') ||
+      luxuryBus?.includes('2') ||
+      regularBus?.includes('2')
+    ) {
+      setIsNonAC(true);
+    }
+    if (
+      normalBus?.includes('1') ||
+      luxuryBus?.includes('1') ||
+      regularBus?.includes('1')
+    ) {
+      setIsAC(true);
+    }
+    if (
+      normalBus?.includes('8') ||
+      luxuryBus?.includes('8') ||
+      regularBus?.includes('8')
+    ) {
+      setIsDay(true);
+    }
+    if (
+      normalBus?.includes('9') ||
+      luxuryBus?.includes('9') ||
+      regularBus?.includes('9')
+    ) {
+      setIsNight(true);
+    }
+  }, [normalBus, luxuryBus, regularBus]);
+
+  const busTypeNavigationClick = page => {
+    //props.navigation.popToTop();
+    props.navigation.pop(1);
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      // navigation.replace('BusTypeDetails'); // Navigate to BusTypeDetails
+      // return true; // prevent default behavior (going back to search screen)
+      busTypeNavigationClick();
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      onBackPress,
+    );
+
+    return () => backHandler.remove(); // clean up on unmount
+  }, [navigation]);
 
   const [statusVisible, setStatusVisible] = useState(false);
 
@@ -121,17 +274,38 @@ const TripListScreen = props => {
 
   // console.log(filterScreenVisible, "isSelectedAC")
 
-  const [isSelectedAC, setSelectedAC] = useState('')
+  const [isSelectedAC, setSelectedAC] = useState('');
 
-  const [isSeatType, setSeatType] = useState(null)
+  const [isSeatType, setSeatType] = useState(null);
 
-  const [busData, setBusdata] = useState([])
+  const [busData, setBusdata] = useState([]);
 
   const [FilterData, setFilterData] = useState('');
 
   const [modalVisible, setModalVisible] = useState(false);
 
   const [userPlan, setUserPlan] = useState(true);
+
+  const handleSeatLeftColor = item => {
+    const seats = Number(item.available_seats);
+
+    if (seats >= 0 && seats < 10) {
+      return {
+        bg: '#FFC1C180',
+        text: '#C62B2B',
+      };
+    } else if (seats >= 10 && seats < 30) {
+      return {
+        bg: '#f9e5c9',
+        text: '#ce7a00',
+      };
+    } else {
+      return {
+        bg: '#dbefdc',
+        text: '#229e37',
+      };
+    }
+  };
 
   const Colordata = [
     { title: 'Red Bus', color: '#E92E3D' },
@@ -142,52 +316,53 @@ const TripListScreen = props => {
     { title: 'MakeMyTrip', color: '#216BC0' },
   ];
 
-  const LuxuryFind = (type) => {
+  const LuxuryFind = type => {
     const normalizedType = type?.toLowerCase() || '';
 
     return (
-      normalizedType.includes("volvo") ||
-      normalizedType.includes("mercedes benz") ||
-      normalizedType.includes("washroom") ||
-      normalizedType.includes("bharat benz") ||
-      normalizedType.includes("luxury") ||
-      normalizedType.includes("ve") ||
-      normalizedType.includes("scania")
+      normalizedType?.includes('volvo') ||
+      normalizedType?.includes('mercedes benz') ||
+      normalizedType?.includes('washroom') ||
+      normalizedType?.includes('bharat benz') ||
+      normalizedType?.includes('luxury') ||
+      normalizedType?.includes('ve') ||
+      normalizedType?.includes('scania')
     );
   };
 
-  const Formatting = (date) => {
+  const Formatting = date => {
     const formattedDate = new Date(date);
     const options = { day: '2-digit', month: 'short' }; // '2-digit' for day, 'short' for month abbreviation (e.g., Mar)
-    const travel_date = new Intl.DateTimeFormat('en-GB', options).format(formattedDate);
+    const travel_date = new Intl.DateTimeFormat('en-GB', options).format(
+      formattedDate,
+    );
     // console.log(travel_date); // Output: "13 Mar"
-    return travel_date
-  }
+    return travel_date;
+  };
 
   const calculateArrival = (departureDate, departureTime, duration) => {
     const departureDateTime = moment(
       `${departureDate} ${departureTime}`,
-      "YYYY-MM-DD hh:mm A"
+      'YYYY-MM-DD hh:mm A',
     );
 
     // Add the duration to the departure time
-    const arrivalDateTime = departureDateTime.add(moment.duration(duration));
+    const arrivalDateTime = departureDateTime?.add(moment?.duration(duration));
 
     // Format the arrival date and time
-    const arrivalDate = arrivalDateTime.format("YYYY-MM-DD");
+    const arrivalDate = arrivalDateTime?.format('YYYY-MM-DD');
     // const arrivalTime = arrivalDateTime.format("hh:mm A");
-    const formattedDate = moment(arrivalDate).format("DD MMM");
+    const formattedDate = moment(arrivalDate)?.format('DD MMM');
 
     return formattedDate;
   };
-
 
   // Example usage
   const busStartDate = '2025-03-14';
 
   const startTime = '11:59 PM';
 
-  const travelTime = '27:41:00';  // 27 hours and 41 minutes
+  const travelTime = '27:41:00'; // 27 hours and 41 minutes
 
   const arrivalDates = calculateArrival(busStartDate, startTime, travelTime);
   // console.log(arrivalDates, "arrivalDate");  // Output will be the calculated arrival date and time
@@ -198,7 +373,20 @@ const TripListScreen = props => {
 
   const [error, setError] = useState();
 
-  const [loading, setLoading] = useState();
+  const formatTravelTime = timeStr => {
+    if (!timeStr) return '';
+    const [h, m] = timeStr?.split(':');
+    const hours = parseInt(h, 10);
+    const minutes = parseInt(m, 10);
+
+    if (minutes === 0) {
+      return `${hours}h`;
+    }
+
+    return `${hours}h ${minutes}m`;
+  };
+
+  const [loading, setLoading] = useState(null);
   // const formatDate = (jdate, startTime) => {
   //   // Combine date and time into a single string
   //   const dateTimeString = `${jdate} ${startTime}`;
@@ -207,7 +395,6 @@ const TripListScreen = props => {
   //   // Format to "DD MMM"
   //   return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
   // };
-
 
   // const getAvailableService = async () => {
   //   try {
@@ -318,131 +505,709 @@ const TripListScreen = props => {
   //   Abhibus_GetBusList(From_Station?.from_Id, From_Station?.to_Id, setBusList);
   // }, []);
 
-
   // useEffect(() => {
   //   if (Journey_Date && Journey_Details !== null) {
   //     GetTBSAvailableService(dispatch, Journey_Details, Journey_Date)
   //   }
   // }, [])
 
+  // const togglePickUpTime = time => {
+  //   setIsDay(prevTime => (prevTime === time ? '' : time)); // Toggle if same, reset if different
+  // };
+
+  // function isTimeInRange(rangeStart, rangeEnd, targetTime) {
+  //   const startRange = moment(rangeStart, 'h:mm A');
+  //   const endRange = moment(rangeEnd, 'h:mm A');
+  //   const target = moment(targetTime, 'h:mm A');
+  //   if (startRange.isAfter(endRange)) {
+  //     return (
+  //       target.isBetween(
+  //         startRange,
+  //         moment('11:59 PM', 'h:mm A'),
+  //         null,
+  //         '[)',
+  //       ) || target.isBefore(endRange, null, '[)')
+  //     );
+  //   }
+  //   return target.isBetween(startRange, endRange, null, '[)');
+  // }
+
+  //  useEffect(() => {
+  //     const getSortedList = () => {
+  //       console.log(selectedOptions, 'is_selectedOptions')
+  //       if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
+  //         // If selectedOptions is empty, return early or set some default behavior
+  //         console.log('selectedOptions is empty');
+  //         return; // Prevent further execution if selectedOptions is empty
+  //       }
+  //       const category = Object.keys(selectedOptions)[0]; // Get the selected category
+  //       console.log(category, 'category');
+
+  //       const option = selectedOptions[category]; // Get the selected sorting option
+  //       let newList = [...Bus_Filter_List];
+  //       if (category?.toLowerCase() === 'price') {
+  //         if (option === 'High to Low') {
+  //           newList.sort((a, b) => b?.Fare - a?.Fare);
+  //         } else if (option === 'Low to High') {
+  //           newList.sort((a, b) => a?.Fare - b?.Fare);
+  //         }
+  //       }
+  //       if (category?.toLowerCase() === 'seats') {
+  //         if (option === 'High to Low') {
+  //           newList.sort(
+  //             (a, b) => Number(b?.available_seats) - Number(a?.available_seats),
+  //           );
+  //         } else if (option === 'Low to High') {
+  //           newList.sort(
+  //             (a, b) => Number(a?.available_seats) - Number(b?.available_seats),
+  //           );
+  //         }
+  //       }
+  //       if (category?.toLowerCase() === 'arrival time') {
+  //         if (option === 'Earliest to Latest') {
+  //           newList.sort((a, b) => {
+  //             const timeA = moment(a?.Arr_Time, 'hh:mm A')?.valueOf(); // Convert to timestamp
+  //             const timeB = moment(b?.Arr_Time, 'hh:mm A')?.valueOf();
+  //             return timeA - timeB; // Sort in ascending order (Earliest first)
+  //           });
+  //         } else if (option === 'Latest to Earliest') {
+  //           newList.sort((a, b) => {
+  //             const timeA = moment(a?.Arr_Time, 'hh:mm A')?.valueOf();
+  //             const timeB = moment(b?.Arr_Time, 'hh:mm A')?.valueOf();
+  //             return timeB - timeA; // Sort in descending order (Latest first)
+  //           });
+  //         }
+  //       }
+
+  //       if (category?.toLowerCase() === 'departure time') {
+  //         if (option === 'Earliest to Latest') {
+  //           newList.sort((a, b) => {
+  //             const timeA = moment(a?.Start_time, 'hh:mm A')?.valueOf();
+  //             const timeB = moment(b?.Start_time, 'hh:mm A')?.valueOf();
+  //             return timeA - timeB;
+  //           });
+  //         } else if (option === 'Latest to Earliest') {
+  //           newList.sort((a, b) => {
+  //             const timeA = moment(a?.Start_time, 'hh:mm A')?.valueOf();
+  //             const timeB = moment(b?.Start_time, 'hh:mm A')?.valueOf();
+  //             return timeB - timeA; // Sort in descending order (Latest first)
+  //           });
+  //         }
+  //       }
+  //       dispatch({ type: GET_BUS_FILTERS, payload: newList });
+  //     };
+
+  //     getSortedList();
+  //   }, [selectedOptions]);
+
+
+
+
+
+
+
+
+
+
+  function isTimeInRange(rangeStart, rangeEnd, targetTime) {
+    const startRange = moment(rangeStart, 'h:mm A');
+    const endRange = moment(rangeEnd, 'h:mm A');
+    const target = moment(targetTime, 'h:mm A');
+
+    if (startRange.isAfter(endRange)) {
+      // Cross-midnight: e.g., 6:00 PM to 6:00 AM
+      return (
+        target.isBetween(
+          startRange,
+          moment('11:59 PM', 'h:mm A'),
+          null,
+          '[)',
+        ) ||
+        target.isBetween(moment('12:00 AM', 'h:mm A'), endRange, null, '[)')
+      );
+    }
+
+    // Regular time range
+    return target.isBetween(startRange, endRange, null, '[)');
+  }
+
+  // function isTimeInRangedrop(rangeStart, rangeEnd, targetTime) {
+  //   const startRange = moment(rangeStart, 'h:mm A');
+  //   const endRange = moment(rangeEnd, 'h:mm A');
+  //   const target = moment(targetTime, 'h:mm A');
+  //   // Case: if the range spans across midnight (e.g., 11:00 PM to 6:00 AM)
+  //   if (startRange.isAfter(endRange)) {
+  //     // Check if target time is either after start time OR before end time
+  //     return (
+  //       target.isBetween(
+  //         startRange,
+  //         moment('11:59 PM', 'h:mm A'),
+  //         null,
+  //         '[)',
+  //       ) || target.isSameOrBefore(endRange, null, '[)')
+  //     );
+  //   }
+  //   // Regular case: check if target time is within the range
+  //   return target.isBetween(startRange, endRange, null, '[)');
+  // }
+
+  // const toggleisDay = time => {
+  //   setIsDay(prevTime => (prevTime === time ? '' : time)); // Toggle if same, reset if different
+  // };
+
+  // function isTimeInRangedrop(rangeStart, rangeEnd, targetTime) {
+  //   const startRange = moment(rangeStart, 'h:mm A');
+  //   const endRange = moment(rangeEnd, 'h:mm A');
+  //   const target = moment(targetTime, 'h:mm A');
+
+  //   if (startRange.isAfter(endRange)) {
+  //     // Handles cross-midnight (e.g., Night: 6:00 PM - 6:00 AM)
+  //     return (
+  //       target.isBetween(
+  //         startRange,
+  //         moment('11:59 PM', 'h:mm A'),
+  //         null,
+  //         '[)',
+  //       ) ||
+  //       target.isBetween(moment('12:00 AM', 'h:mm A'), endRange, null, '[)')
+  //     );
+  //   }
+
+  //   // Standard case
+  //   return target.isBetween(startRange, endRange, null, '[)');
+  // }
+
+  // useEffect(() => {
+  //   setLoading(true); // Start loade
+
+  //   let filteredList = Bus_List || [];
+
+  //   // ---------------------------------UNSELECTSEATTYPE----------------------------------------
+  //   // if (isSeatType === '') {
+  //   //   // If isSeatType is empty, check if "3" exists in any of the arrays and remove it
+  //   //   if (selectedBusesAll.includes("3") || selectedBusesLuxury.includes("3") || selectedBusesRegular.includes("3")) {
+  //   //     selectedBusesAll = selectedBusesAll.filter(item => item !== "3");
+  //   //     selectedBusesLuxury = selectedBusesLuxury.filter(item => item !== "3");
+  //   //     selectedBusesRegular = selectedBusesRegular.filter(item => item !== "3");
+  //   //   }
+  //   // } else if (selectedBusesAll.includes("4") || selectedBusesLuxury.includes("4") || selectedBusesRegular.includes("4")) {
+  //   //   // If isSeatType is not empty and "4" exists in any of the arrays, remove it
+  //   //   selectedBusesAll = selectedBusesAll.filter(item => item !== "4");
+  //   //   selectedBusesLuxury = selectedBusesLuxury.filter(item => item !== "4");
+  //   //   selectedBusesRegular = selectedBusesRegular.filter(item => item !== "4");
+  //   // }
+
+  //   // -----------------------------------Home_Filter---------------------------------------------------------
+
+  //   if (selectBusType === 'lux') {
+  //     filteredList = filteredList?.filter(
+  //       item => LuxuryFind(item?.Bus_Type_Name) === true,
+  //     );
+  //   }
+  //   if (selectBusType === 'reg') {
+  //     filteredList = filteredList?.filter(
+  //       item => !LuxuryFind(item?.Bus_Type_Name) === true,
+  //     );
+  //   }
+
+  //   if (isSeater === true && selectBusType !== 'lux') {
+  //     filteredList = filteredList?.filter(item =>
+  //       item?.bus_type?.toLowerCase()?.includes('seater'),
+  //     );
+  //   }
+  //   if (isSeater === true && selectBusType === 'lux') {
+  //     filteredList = filteredList?.filter(
+  //       item =>
+  //         LuxuryFind(item?.Bus_Type_Name) === true &&
+  //         item?.bus_type?.toLowerCase()?.includes('seater'),
+  //     );
+  //   }
+
+  //   if (isSleeper === true && selectBusType !== 'lux') {
+  //     filteredList = filteredList?.filter(item =>
+  //       item?.bus_type?.toLowerCase()?.includes('sleeper'),
+  //     );
+  //   }
+  //   if (isSleeper === true && selectBusType === 'lux') {
+  //     filteredList = filteredList?.filter(
+  //       item =>
+  //         LuxuryFind(item?.Bus_Type_Name) === true &&
+  //         item?.bus_type?.toLowerCase()?.includes('sleeper'),
+  //     );
+  //   }
+
+  //   // if (isAC === true) {
+  //   //   filteredList = filteredList?.filter(item =>
+  //   //     !item?.bus_type?.toLowerCase()?.includes('non-ac'),
+  //   //   );
+  //   // }
+  //   if (isAC === true  && selectBusType !== 'lux') {
+  //     filteredList = filteredList?.filter(item => {
+  //       const type = item?.bus_type?.toLowerCase();
+  //       return type.includes('ac') && !type.includes('non-ac');
+  //     });
+  //   }
+
+  //   // if (isAC === true && selectBusType === 'lux') {
+  //   //   filteredList = filteredList?.filter(item =>
+  //   //     LuxuryFind(item?.Bus_Type_Name) === true &&
+  //   //     !item?.bus_type?.toLowerCase()?.includes('non-ac'),
+  //   //   );
+  //   // }
+
+  //   if (isAC === true && selectBusType === 'lux') {
+  //     filteredList = filteredList?.filter(item => {
+  //       const type = item?.bus_type?.toLowerCase();
+  //       return (
+  //         LuxuryFind(item?.Bus_Type_Name) === true &&
+  //         type.includes('ac') &&
+  //         !type.includes('non-ac')
+  //       );
+  //     });
+  //   }
+
+  //   if (isNonAC === true && selectBusType !== 'lux') {
+  //     filteredList = filteredList?.filter(item =>
+  //       item?.bus_type?.toLowerCase()?.includes('non-ac'),
+  //     );
+  //   }
+
+  //   if (isNonAC === true && selectBusType === 'lux') {
+  //     filteredList = filteredList?.filter(item =>
+  //       item?.bus_type?.toLowerCase()?.includes('non-ac'),
+  //     );
+  //   }
+  //   // ---------------------------All_Buses---------------------------------------------------
+
+  //   // Filter by AC / Non-AC buses
+  //   if (isSelectedAC === 'NonAC' || normalBus?.includes('2')) {
+  //     filteredList = filteredList?.filter(item =>
+  //       item?.bus_type?.toLowerCase()?.includes('non-ac'),
+  //     );
+  //   } else if (isSelectedAC === 'AC' || normalBus?.includes('1')) {
+  //     filteredList = filteredList?.filter(
+  //       item => !item?.bus_type?.toLowerCase()?.includes('non-ac'),
+  //     );
+  //   }
+  //   // Filter by Seat / Sleeper types
+  //   if (isSeatType === 'Seater' || normalBus?.includes('3')) {
+  //     filteredList = filteredList?.filter(item =>
+  //       item?.bus_type?.toLowerCase()?.includes('seater'),
+  //     );
+  //   } else if (isSeatType === 'Sleeper' || normalBus?.includes('4')) {
+  //     filteredList = filteredList?.filter(item =>
+  //       item?.bus_type?.toLowerCase()?.includes('sleeper'),
+  //     );
+  //   }
+
+  //   // ----------------------------------------Regular_Filter--------------------------------------
+
+  //   // Filter by AC / Non-AC buses
+  //   if (regularBus?.includes('2')) {
+  //     filteredList = filteredList?.filter(
+  //       item =>
+  //         LuxuryFind(item?.Bus_Type_Name) === false &&
+  //         item?.bus_type?.toLowerCase()?.includes('non-ac'),
+  //     );
+  //   } else if (regularBus?.includes('1')) {
+  //     filteredList = filteredList?.filter(
+  //       item =>
+  //         LuxuryFind(item?.Bus_Type_Name) === false &&
+  //         !item?.bus_type?.toLowerCase()?.includes('non-ac'),
+  //     );
+  //   }
+
+  //   // Filter by Seat / Sleeper types
+  //   if (regularBus?.includes('3')) {
+  //     filteredList = filteredList?.filter(
+  //       item =>
+  //         LuxuryFind(item?.Bus_Type_Name) === false &&
+  //         item?.bus_type?.toLowerCase()?.includes('seater'),
+  //     );
+  //   } else if (regularBus?.includes('4')) {
+  //     filteredList = filteredList?.filter(
+  //       item =>
+  //         LuxuryFind(item?.Bus_Type_Name) === false &&
+  //         item?.bus_type?.toLowerCase()?.includes('sleeper'),
+  //     );
+  //   }
+
+  //   // ----------------------Luxury_Filter----------------------------------
+
+  //   // Filter by AC / Non-AC buses
+  //   if (luxuryBus?.includes('2')) {
+  //     filteredList = filteredList?.filter(item =>
+  //       //  LuxuryFind(item?.Bus_Type_Name) === true &&
+  //       item?.bus_type?.toLowerCase()?.includes('non-ac'),
+  //     );
+  //   } else if (luxuryBus?.includes('1')) {
+  //     filteredList = filteredList?.filter(
+  //       item =>
+  //         LuxuryFind(item?.Bus_Type_Name) === true &&
+  //         !item?.bus_type?.toLowerCase()?.includes('non-ac'),
+  //     );
+  //   }
+
+  //   // Filter by Seat / Sleeper types
+  //   if (luxuryBus?.includes('3')) {
+  //     filteredList = filteredList?.filter(item =>
+  //       // LuxuryFind(item?.Bus_Type_Name) === true &&
+  //       item?.bus_type?.toLowerCase()?.includes('seater'),
+  //     );
+  //   } else if (luxuryBus?.includes('4')) {
+  //     filteredList = filteredList?.filter(item =>
+  //       // LuxuryFind(item?.Bus_Type_Name) === true &&
+  //       item?.bus_type?.toLowerCase()?.includes('sleeper'),
+  //     );
+  //   }
+
+  //   // Day filter
+  //   if (isDay) {
+  //     filteredList = filteredList?.filter(item => {
+  //       const [starttime, endtime] = isDay.split(' - ');
+  //       return isTimeInRange(starttime, endtime, item?.Start_time);
+  //     });
+  //   }
+
+  //   // Night filter
+  //   if (isNight) {
+  //     filteredList = filteredList?.filter(item => {
+  //       const [starttime, endtime] = isNight.split(' - ');
+  //       return isTimeInRange(starttime, endtime, item?.Start_time);
+  //     });
+  //   }
+  //   // // Night filter
+  //   // if (isNight) {
+  //   //   filteredList = filteredList?.filter(item => {
+  //   //     const [starttime, endtime] = isNight.split(' - ');
+  //   //     // // console.log(isTimeInRange(starttime, endtime, item?.Arr_Time), starttime, endtime, item?.Arr_Time, "startendtime");
+  //   //     return isTimeInRangedrop(starttime, endtime, item?.Arr_Time);
+  //   //   });
+  //   // }
+
+  //   //------------------------------------------------Day/Nigth----------------------------------------
+
+  //   // Apply the filtered list to the state or dispatch it
+  //   if (selectedOptions && Object.keys(selectedOptions).length > 0) {
+  //     const category = Object.keys(selectedOptions)[0];
+  //     const option = selectedOptions[category];
+
+  //     if (category?.toLowerCase() === 'price') {
+  //       if (option === 'High to Low') {
+  //         filteredList.sort((a, b) => b?.Fare - a?.Fare);
+  //       } else if (option === 'Low to High') {
+  //         filteredList.sort((a, b) => a?.Fare - b?.Fare);
+  //       }
+  //     }
+  //     if (category?.toLowerCase() === 'seats') {
+  //       if (option === 'High to Low') {
+  //         filteredList.sort((a, b) => Number(b?.available_seats) - Number(a?.available_seats));
+  //       } else if (option === 'Low to High') {
+  //         filteredList.sort((a, b) => Number(a?.available_seats) - Number(b?.available_seats));
+  //       }
+  //     }
+  //     if (category?.toLowerCase() === 'arrival time') {
+  //       if (option === 'Earliest to Latest') {
+  //         filteredList.sort((a, b) => {
+  //           const timeA = moment(a?.Arr_Time, 'hh:mm A')?.valueOf();
+  //           const timeB = moment(b?.Arr_Time, 'hh:mm A')?.valueOf();
+  //           return timeA - timeB;
+  //         });
+  //       } else if (option === 'Latest to Earliest') {
+  //         filteredList.sort((a, b) => {
+  //           const timeA = moment(a?.Arr_Time, 'hh:mm A')?.valueOf();
+  //           const timeB = moment(b?.Arr_Time, 'hh:mm A')?.valueOf();
+  //           return timeB - timeA;
+  //         });
+  //       }
+  //     }
+  //     if (category?.toLowerCase() === 'departure time') {
+  //       if (option === 'Earliest to Latest') {
+  //         filteredList.sort((a, b) => {
+  //           const timeA = moment(a?.Start_time, 'hh:mm A')?.valueOf();
+  //           const timeB = moment(b?.Start_time, 'hh:mm A')?.valueOf();
+  //           return timeA - timeB;
+  //         });
+  //       } else if (option === 'Latest to Earliest') {
+  //         filteredList.sort((a, b) => {
+  //           const timeA = moment(a?.Start_time, 'hh:mm A')?.valueOf();
+  //           const timeB = moment(b?.Start_time, 'hh:mm A')?.valueOf();
+  //           return timeB - timeA;
+  //         });
+  //       }
+  //     }
+  //   }
+
+
+  //   dispatch({
+  //     type: GET_BUS_FILTERS,
+  //     payload: filteredList,
+  //   });
+  //   setLoading(false);
+  // }, [
+    // selectedBusesRegular,
+    // selectedBusesLuxury,
+    // selectedBusesAll,
+    // selectBusType,
+    // isSeatType,
+    // isSelectedAC,
+    // Bus_List,
+    // regularBus,
+    // luxuryBus,
+    // normalBus,
+    // // bustype,
+    // isSeater,
+    // isSleeper,
+    // isAC,
+    // isNonAC,
+    // isDay,
+    // isNight,
+    // selectedOptions
+  // ]);
+
 
   useEffect(() => {
+    // setSuccessLoader("success")
+    setLoading(true);
     let filteredList = Bus_List || [];
 
-    // ---------------------------------UNSELECTSEATTYPE----------------------------------------
-    // if (isSeatType === '') {
-    //   // If isSeatType is empty, check if "3" exists in any of the arrays and remove it
-    //   if (selectedBusesAll.includes("3") || selectedBusesLuxury.includes("3") || selectedBusesRegular.includes("3")) {
-    //     selectedBusesAll = selectedBusesAll.filter(item => item !== "3");
-    //     selectedBusesLuxury = selectedBusesLuxury.filter(item => item !== "3");
-    //     selectedBusesRegular = selectedBusesRegular.filter(item => item !== "3");
-    //   }
-    // } else if (selectedBusesAll.includes("4") || selectedBusesLuxury.includes("4") || selectedBusesRegular.includes("4")) {
-    //   // If isSeatType is not empty and "4" exists in any of the arrays, remove it
-    //   selectedBusesAll = selectedBusesAll.filter(item => item !== "4");
-    //   selectedBusesLuxury = selectedBusesLuxury.filter(item => item !== "4");
-    //   selectedBusesRegular = selectedBusesRegular.filter(item => item !== "4");
-    // }
+    // ----------------------------- Bus Type Filter -----------------------------
 
-    // -----------------------------------Home_Filter---------------------------------------------------------
-
-    // ---------------------------All_Buses---------------------------------------------------
-
-    // Filter by AC / Non-AC buses
-    if (isSelectedAC === "NonAC" || normalBus?.includes("2")) {
-      filteredList = filteredList.filter(
-        (item) => item?.bus_type?.toLowerCase()?.includes("non-ac")
-      );
-    } else if (isSelectedAC === "AC" || normalBus?.includes("1")) {
-      filteredList = filteredList.filter((item) =>
-        !item?.bus_type?.toLowerCase()?.includes("non-ac")
-      );
+    if (selectBusType === 'lux') {
+      filteredList = filteredList.filter(item => LuxuryFind(item?.Bus_Type_Name));
+    } else if (selectBusType === 'reg') {
+      filteredList = filteredList.filter(item => !LuxuryFind(item?.Bus_Type_Name));
     }
-    // Filter by Seat / Sleeper types
-    if (isSeatType === "Seater" || normalBus?.includes("3")) {
-      filteredList = filteredList.filter((item) =>
-        item?.bus_type?.toLowerCase()?.includes("seater")
-      );
-    } else if (isSeatType === "Sleeper" || normalBus?.includes("4")) {
-      filteredList = filteredList.filter((item) =>
-        item?.bus_type?.toLowerCase()?.includes("sleeper")
+
+    // ----------------------------- Seater / Sleeper Filters -----------------------------
+
+    const isLuxury = (item) => LuxuryFind(item?.Bus_Type_Name);
+    const typeIncludes = (item, keyword) => item?.bus_type?.toLowerCase()?.includes(keyword);
+
+    if (isSeater) {
+      filteredList = filteredList.filter(item =>
+        (!selectBusType || selectBusType !== 'lux' || isLuxury(item)) && typeIncludes(item, 'seater')
       );
     }
 
-    // ----------------------------------------Regular_Filter--------------------------------------
-
-    // Filter by AC / Non-AC buses
-    if (regularBus?.includes("2")) {
-      filteredList = filteredList.filter(
-        (item) => LuxuryFind(item?.Bus_Type_Name) === false && item?.bus_type?.toLowerCase()?.includes("non-ac")
-      );
-    } else if (regularBus?.includes("1")) {
-      filteredList = filteredList.filter((item) =>
-        LuxuryFind(item?.Bus_Type_Name) === false && !item?.bus_type?.toLowerCase()?.includes("non-ac")
+    if (isSleeper) {
+      filteredList = filteredList.filter(item =>
+        (!selectBusType || selectBusType !== 'lux' || isLuxury(item)) && typeIncludes(item, 'sleeper')
       );
     }
 
-    // Filter by Seat / Sleeper types
-    if (regularBus?.includes("3")) {
-      filteredList = filteredList.filter((item) =>
-        LuxuryFind(item?.Bus_Type_Name) === false && item?.bus_type?.toLowerCase()?.includes("seater")
-      );
-    } else if (regularBus?.includes("4")) {
-      filteredList = filteredList.filter((item) =>
-        LuxuryFind(item?.Bus_Type_Name) === false && item?.bus_type?.toLowerCase()?.includes("sleeper")
+    // ----------------------------- AC / Non-AC Filters -----------------------------
+
+    if (isAC) {
+      filteredList = filteredList.filter(item =>
+        (!selectBusType || selectBusType !== 'lux' || isLuxury(item)) &&
+        typeIncludes(item, 'ac') &&
+        !typeIncludes(item, 'non-ac')
       );
     }
 
-    // ----------------------Luxury_Filter----------------------------------
-
-    // Filter by AC / Non-AC buses
-    if (luxuryBus?.includes("2")) {
-      filteredList = filteredList?.filter(
-        (item) => LuxuryFind(item?.Bus_Type_Name) === true && item?.bus_type?.toLowerCase()?.includes("non-ac")
-      );
-    } else if (luxuryBus?.includes("1")) {
-      filteredList = filteredList?.filter((item) =>
-        LuxuryFind(item?.Bus_Type_Name) === true && !item?.bus_type?.toLowerCase()?.includes("non-ac")
+    if (isNonAC) {
+      filteredList = filteredList.filter(item =>
+        (!selectBusType || selectBusType !== 'lux' || isLuxury(item)) &&
+        typeIncludes(item, 'non-ac')
       );
     }
 
-    // Filter by Seat / Sleeper types
-    if (luxuryBus?.includes("3")) {
-      filteredList = filteredList?.filter((item) =>
-        LuxuryFind(item?.Bus_Type_Name) === true && item?.bus_type?.toLowerCase()?.includes("seater")
-      );
-    } else if (luxuryBus?.includes("4")) {
-      filteredList = filteredList?.filter((item) =>
-        LuxuryFind(item?.Bus_Type_Name) === true && item?.bus_type?.toLowerCase()?.includes("sleeper")
-      );
+    // ----------------------------- Common Bus Type Filters -----------------------------
+
+    const applyBusTypeFilters = (busTypeArray, checkLuxury) => {
+      if (!busTypeArray) return;
+
+      if (busTypeArray.includes('1')) {
+        filteredList = filteredList.filter(item =>
+          (!checkLuxury || isLuxury(item)) && !typeIncludes(item, 'non-ac')
+        );
+      } else if (busTypeArray.includes('2')) {
+        filteredList = filteredList.filter(item =>
+          (!checkLuxury || isLuxury(item)) && typeIncludes(item, 'non-ac')
+        );
+      }
+
+      if (busTypeArray.includes('3')) {
+        filteredList = filteredList.filter(item =>
+          (!checkLuxury || isLuxury(item)) && typeIncludes(item, 'seater')
+        );
+      } else if (busTypeArray.includes('4')) {
+        filteredList = filteredList.filter(item =>
+          (!checkLuxury || isLuxury(item)) && typeIncludes(item, 'sleeper')
+        );
+      }
+    };
+
+    applyBusTypeFilters(normalBus);
+    applyBusTypeFilters(regularBus, false);
+    applyBusTypeFilters(luxuryBus, true);
+
+    // ----------------------------- Time Filters -----------------------------
+
+    const applyTimeFilter = (timeRange, getTime) => {
+      if (!timeRange) return;
+      const [start, end] = timeRange.split(' - ');
+      filteredList = filteredList.filter(item => isTimeInRange(start, end, getTime(item)));
+    };
+
+    applyTimeFilter(isDay, item => item?.Start_time);
+    applyTimeFilter(isNight, item => item?.Start_time); // use .Arr_Time if needed
+
+    // ----------------------------- Sort Filters -----------------------------
+
+    if (selectedOptions && Object.keys(selectedOptions).length > 0) {
+      const [category, option] = Object.entries(selectedOptions)[0];
+
+      const sortByKey = (key, isNumber = true, isAsc = true) => {
+        filteredList.sort((a, b) => {
+          const valA = isNumber ? Number(a[key]) : moment(a[key], 'hh:mm A').valueOf();
+          const valB = isNumber ? Number(b[key]) : moment(b[key], 'hh:mm A').valueOf();
+          return isAsc ? valA - valB : valB - valA;
+        });
+      };
+
+      switch (category.toLowerCase()) {
+        case 'price':
+          sortByKey('Fare', true, option === 'Low to High');
+          break;
+
+        case 'seats':
+          sortByKey('available_seats', true, option === 'Low to High');
+          break;
+
+        case 'arrival time':
+          sortByKey('Arr_Time', false, option === 'Earliest to Latest');
+          break;
+
+        case 'departure time':
+          sortByKey('Start_time', false, option === 'Earliest to Latest');
+          break;
+
+        default:
+          break;
+      }
     }
-    // Apply the filtered list to the state or dispatch it
+
+    // ----------------------------- Set Final Filtered List -----------------------------
+
     dispatch({
       type: GET_BUS_FILTERS,
       payload: filteredList,
     });
-
+    // if(filteredList?.length <= 0 && Bus_Filter_List.length <= 0){
+    //   setSuccessLoader("fail")
+    // }
+    // else if(filteredList?.length > 0 && Bus_Filter_List.length > 0)
+    //   setSuccessLoader("success")
+ 
+    setTimeout(() => {
+      setLoading(false); 
+    }, 2000);
   }, [
-    selectedBusesRegular,
+     selectedBusesRegular,
     selectedBusesLuxury,
     selectedBusesAll,
+    selectBusType,
     isSeatType,
     isSelectedAC,
     Bus_List,
     regularBus,
     luxuryBus,
-    normalBus
+    normalBus,
+    // bustype,
+    isSeater,
+    isSleeper,
+    isAC,
+    isNonAC,
+    isDay,
+    isNight,
+    selectedOptions
   ]);
 
 
+//   useEffect(()=>{
+// setLoading(true)
+// setTimeout(() => {
+//   setLoading(false)
+// }, 2000);
+//   },[
+//     selectedBusesRegular,
+//     selectedBusesLuxury,
+//     selectedBusesAll,
+//     selectBusType,
+//     isSeatType,
+//     isSelectedAC,
+//     Bus_List,
+//     regularBus,
+//     luxuryBus,
+//     normalBus,
+//     // bustype,
+//     isSeater,
+//     isSleeper,
+//     isAC,
+//     isNonAC,
+//     isDay,
+//     isNight,
+//     selectedOptions , 
+//   ])
+
+
+  // const filteredAndSortedList = useBusFilter({
+  //   Bus_List,
+  //   selectBusType,
+  //   isSeater,
+  //   isSleeper,
+  //   isAC,
+  //   isNonAC,
+  //   isSelectedAC,
+  //   normalBus,
+  //   isSeatType,
+  //   regularBus,
+  //   luxuryBus,
+  //   isDay,
+  //   isNight,
+  //   selectedOptions
+  // });
+
+
+
+  // useEffect(() => {
+  //   setLoading(true);
+  //   newFilter()
+  //   // dispatch({
+  //   //   type: GET_BUS_FILTERS,
+  //   //   payload: filteredAndSortedList,
+  //   // });
+
+  //   setLoading(false);
+  // }, [filteredAndSortedList,
+  //   selectedBusesRegular,
+  //   selectedBusesLuxury,
+  //   selectedBusesAll,
+  //   selectBusType,
+  //   isSeatType,
+  //   isSelectedAC,
+  //   Bus_List,
+  //   regularBus,
+  //   luxuryBus,
+  //   normalBus,
+  //   // bustype,
+  //   isSeater,
+  //   isSleeper,
+  //   isAC,
+  //   isNonAC,
+  //   isDay,
+  //   isNight,
+  //   selectedOptions
+
+  // ]);
 
   useEffect(() => {
-    dispatch({ type: CURRENT_PERCENTAGE, payload: 5 })
-  }, [])
+    dispatch({ type: CURRENT_PERCENTAGE, payload: 5 });
+  }, []);
   // console.log(Journey_Details
   //   , Journey_Date, Bus_Filter_List, "Bus_Filter_List")
-
-
 
   const viewListAry = [
     {
@@ -548,28 +1313,34 @@ const TripListScreen = props => {
 
   const dataFilter = [
     { id: '2', icon: require('../assets/Filters/Sort.png'), title: 'Sort' },
+    // {
+    //   id: '3',
+    //   icon:
+    //     userPlan === true
+    //       ? require('../assets/Filters/LuxuryCoach.png')
+    //       : require('../assets/Filters/Ac.png'),
+    //   title: userPlan === true ? 'Luxury Coach' : '',
+    // },
     {
-      id: '3',
-      icon:
-        userPlan === true
-          ? require('../assets/Filters/LuxuryCoach.png')
-          : require('../assets/Filters/Ac.png'),
-      title: userPlan === true ? 'Luxury Coach' : 'AC',
+      id: '1',
+      icon: require('../assets/Filters/LuxuryCoach.png'),
+      title: 'Luxury Coach',
     },
-    { id: '4', icon: require('../assets/Filters/NonAc.png'), title: 'Non AC' },
-    { id: '5', icon: require('../assets/Filters/Seater.png'), title: 'Seater' },
-    {
-      id: '6',
-      icon: require('../assets/Filters/SemiSeater.png'),
-      title: 'Semi Sleeper',
-    },
+    { id: '4', icon: require('../assets/Filters/Ac.png'), title: 'AC' },
+    { id: '5', icon: require('../assets/Filters/NonAc.png'), title: 'Non AC' },
+    { id: '6', icon: require('../assets/Filters/Seater.png'), title: 'Seater' },
+    // {
+    //   id: '6',
+    //   icon: require('../assets/Filters/SemiSeater.png'),
+    //   title: 'Semi Sleeper',
+    // },
     {
       id: '7',
       icon: require('../assets/Filters/Sleepers.png'),
       title: 'Sleeper',
     },
-    { id: '8', icon: require('../assets/Filters/Day.png'), title: 'Day' },
-    { id: '9', icon: require('../assets/Filters/Night.png'), title: 'Night' },
+    { id: '8', icon: require('../assets/Filters/Day.png'), title: '(6:00 - 11:00 AM)' },
+    { id: '9', icon: require('../assets/Filters/Night.png'), title: '(6:00 - 11:00 PM)' },
   ];
 
   const [isMinimized, setIsMinimized] = useState(false); // State to track minimized/expanded state
@@ -578,7 +1349,7 @@ const TripListScreen = props => {
   const scrollOffset = useRef(0); // Ref to track the previous scroll position
 
   const handleScroll = event => {
-    const currentOffset = event.nativeEvent.contentOffset.x; // Current horizontal offset
+    const currentOffset = event?.nativeEvent?.contentOffset?.x; // Current horizontal offset
     const direction = currentOffset > scrollOffset.current ? 'right' : 'left'; // Determine scroll direction
     // Update scrollOffset to the current value
     scrollOffset.current = currentOffset;
@@ -686,7 +1457,7 @@ const TripListScreen = props => {
               style={{ width: 30, height: 30, marginLeft: 8 }}
             />
           </View>
-          <Text style={styles.tripPriceTxt}>{item.Fare}</Text>
+          <Text style={styles.tripPriceTxt}>{item?.Fare}</Text>
         </View>
         <View style={styles.lowPriceImageView}>
           <Image
@@ -799,13 +1570,15 @@ const TripListScreen = props => {
           <View style={styles.tripPickDateView}>
             <View
               style={{
-                flexDirection: 'column',
-                justifyContent: 'center',
-                gap: 3,
-                alignItems: 'flex-start',
+                // flexDirection: 'column',
+                // justifyContent: 'center',
+                // gap: 3,
+                // alignItems: 'flex-start',
                 paddingLeft: 8,
               }}>
-              <Text style={styles.tripDateTxt}>{Formatting(item?.BUS_START_DATE)}</Text>
+              <Text style={styles.tripDateTxt}>
+                {Formatting(item?.BUS_START_DATE)}
+              </Text>
               <Text style={styles.tripStartTimeTxt}>{item?.Start_time}</Text>
             </View>
             <View
@@ -817,8 +1590,10 @@ const TripListScreen = props => {
                 justifyContent: 'center',
                 marginBottom: 1,
               }}>
-              <BusTimeBg width="175%" height="150%" color={"#1F487C"} />
-              <Text style={styles.tripDurationTimeTxt}>{item?.TravelTime.split(':').slice(0, 2).join(':')} Hrs</Text>
+              <BusTimeBg width="100%" height="160%" color={'#1F487C'} />
+              <Text style={styles.tripDurationTimeTxt}>
+                {formatTravelTime(item?.TravelTime)}
+              </Text>
             </View>
             <View
               style={{
@@ -829,14 +1604,18 @@ const TripListScreen = props => {
               }}>
               <Text
                 style={{
-                  fontSize: 12,
+                  fontSize: 10,
                   lineHeight: 15,
                   fontFamily: 'Inter',
                   fontWeight: '400',
                   color: '#1F487C',
                   textAlign: 'right',
                 }}>
-                {calculateArrival(item?.BUS_START_DATE, item?.Start_time, item?.TravelTime)}
+                {calculateArrival(
+                  item?.BUS_START_DATE,
+                  item?.Start_time,
+                  item?.TravelTime,
+                )}
               </Text>
               <Text style={styles.tripDropDateTxt}>{item?.Arr_Time}</Text>
             </View>
@@ -883,20 +1662,22 @@ const TripListScreen = props => {
               <Text style={styles.userLikeCount}>8.8k</Text>
             </View> */}
           </View>
-          <Text style={styles.a_seats}>Available Seats</Text>
+          <Text style={[styles.a_seats, { color: '#1F487C' }]}>Available Seats</Text>
           <View
             style={{
               flexDirection: 'row',
-              backgroundColor: 'rgba(255, 193, 193, 0.5)',
+              backgroundColor: handleSeatLeftColor(item).bg,
               justifyContent: 'center',
               alignItems: 'center',
               height: 25,
               borderRadius: 12,
             }}>
             <Svg style={{ width: 14, height: 14, margin: 5 }}>
-              <SeatRed width="100%" height="100%" />
+              <SeatRed width="100%" height="100%" color={handleSeatLeftColor(item).text} />
             </Svg>
-            <Text style={styles.seatCountTxt}>{item?.available_seats} Seats left</Text>
+            <Text style={[styles.seatCountTxt, { color: handleSeatLeftColor(item).text }]}>
+              {item?.available_seats} Seats left
+            </Text>
           </View>
           <View>
             {/* <Text style={styles.windowSeatTxt}>8 Window Seats</Text> */}
@@ -947,9 +1728,8 @@ const TripListScreen = props => {
           </View>
           <TouchableOpacity
             onPress={() => OnClickListNavigation(item, Index, true)}
-            style={{ width: '38%', height: 34, borderTopRightRadius: 8 }}
-          >
-            <View >
+            style={{ width: '38%', height: 34, borderTopRightRadius: 8 }}>
+            <View>
               <ImageBackground
                 style={{
                   flexDirection: 'row',
@@ -975,10 +1755,12 @@ const TripListScreen = props => {
                     marginLeft: 30,
                   }}>
                   {/* {`₹ ${item?.Fare}`} */}
-                  {`₹ ${calculateDiscountedFare(
-                    item?.BUS_START_DATE,
-                    item?.Fare,
-                    tbs_discount
+                  {`₹ ${Math.round(
+                    calculateDiscountedFare(
+                      item?.BUS_START_DATE,
+                      item?.Fare,
+                      tbs_discount,
+                    ),
                   )}`}
                 </Text>
 
@@ -1007,7 +1789,6 @@ const TripListScreen = props => {
               </ImageBackground>
             </View>
           </TouchableOpacity>
-
         </View>
         <View
           style={{
@@ -1056,8 +1837,9 @@ const TripListScreen = props => {
                 justifyContent: 'center',
               }}
               onPress={() => {
-                setBusdata(item)
-                setStatusVisible(true)
+                setBusdata(item);
+                setLuxBus('regular');
+                setStatusVisible(true);
               }}>
               <Text style={styles.tripViewMoreTxt}>View More...</Text>
             </TouchableOpacity>
@@ -1135,13 +1917,15 @@ const TripListScreen = props => {
                 marginTop: 10,
               }}>
               <View
-                style={{
-                  // backgroundColor:'red',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: 3,
-                }}>
+                style={
+                  {
+                    // backgroundColor:'red',
+                    // flexDirection: 'column',
+                    // justifyContent: 'center',
+                    // alignItems: 'center',
+                    // gap: 3,
+                  }
+                }>
                 <Text style={styles.LuxtripDateTxt}>
                   {Formatting(item?.BUS_START_DATE)}
                 </Text>
@@ -1159,9 +1943,9 @@ const TripListScreen = props => {
                   marginBottom: 1,
                 }}>
                 {/* <BusDurationBg width="125%" height="125%" /> */}
-                <BusTimeBg width="175%" height="150%" color="#393939" />
+                <BusTimeBg width="100%" height="160%" color="#393939" />
                 <Text style={styles.tripDurationTimeTxt}>
-                  {item?.TravelTime.split(':').slice(0, 2).join(':')} Hrs
+                  {formatTravelTime(item?.TravelTime)}
                 </Text>
               </View>
               <View
@@ -1173,19 +1957,20 @@ const TripListScreen = props => {
                 }}>
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontSize: 10,
                     fontFamily: 'Inter',
                     lineHeight: 15,
                     fontWeight: '400',
                     color: '#393939',
-                    textAlign: 'right',
+                    textAlign: 'left',
                   }}>
-                  {calculateArrival(item?.BUS_START_DATE, item?.Start_time, item?.TravelTime)}
+                  {calculateArrival(
+                    item?.BUS_START_DATE,
+                    item?.Start_time,
+                    item?.TravelTime,
+                  )}
                 </Text>
-                <Text
-                  style={styles.LuxtripDropDateTxt} >
-                  {item?.Arr_Time}
-                </Text>
+                <Text style={styles.LuxtripDropDateTxt}>{item?.Arr_Time}</Text>
               </View>
             </View>
           </View>
@@ -1260,11 +2045,11 @@ const TripListScreen = props => {
                 </Text>
               </View>  */}
             </View>
-            <Text style={styles.a_seats}>Available Seats</Text>
+            <Text style={[styles.a_seats, { color: '#393939' }]}>Available Seats</Text>
             <View
               style={{
                 flexDirection: 'row',
-                backgroundColor: 'rgba(255, 167, 167, 0.8)',
+                backgroundColor: handleSeatLeftColor(item).bg,
                 justifyContent: 'center',
                 alignItems: 'center',
                 flex: 1,
@@ -1273,18 +2058,18 @@ const TripListScreen = props => {
                 borderRadius: 12,
               }}>
               <Svg style={{ width: 14, height: 14, margin: 5 }}>
-                <SeatRed width="90%" height="90%" />
+                <SeatRed width="90%" height="90%" color={handleSeatLeftColor(item).text} />
               </Svg>
               <Text
                 style={{
                   fontSize: 12,
                   textAlign: 'justify',
-                  color: 'rgba(198, 43, 43, 1)',
+                  color: handleSeatLeftColor(item).text,
                   fontWeight: '600',
                   fontFamily: 'Inter',
                   lineHeight: 15,
                 }}>
-                7 Seats left
+                {item?.available_seats} Seats left
               </Text>
             </View>
             <View style={{ paddingVertical: 2 }}>
@@ -1361,8 +2146,7 @@ const TripListScreen = props => {
               </View>
               <TouchableOpacity
                 onPress={() => OnClickListNavigation(item, Index, true)}
-                style={{ width: '38%', height: 34, borderTopRightRadius: 8 }}
-              >
+                style={{ width: '38%', height: 34, borderTopRightRadius: 8 }}>
                 <View>
                   <ImageBackground
                     style={{
@@ -1388,13 +2172,15 @@ const TripListScreen = props => {
                         fontWeight: 'bold',
                         marginLeft: 30,
                       }}>
-                      {`₹ ${calculateDiscountedFare(
-                        item?.BUS_START_DATE,
-                        item.Fare,
-                        tbs_discount
+                      {`₹ ${Math.round(
+                        calculateDiscountedFare(
+                          item?.BUS_START_DATE,
+                          item?.Fare,
+                          tbs_discount,
+                        ),
                       )}`}
                     </Text>
-                    <Image
+                    <FastImage
                       source={require('../assets/Pricedown.gif')}
                       style={{
                         width: 37,
@@ -1402,6 +2188,7 @@ const TripListScreen = props => {
                         marginRight: 5,
                         transform: [{ rotate: '-90deg' }],
                       }}
+                      resizeMode={FastImage.resizeMode.cover}
                     />
                   </ImageBackground>
                 </View>
@@ -1522,7 +2309,10 @@ const TripListScreen = props => {
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
-                onPress={() => setStatusVisible(true)}>
+                onPress={() => {
+                  setLuxBus('lux');
+                  setStatusVisible(true)
+                }}>
                 <Text
                   style={{
                     fontSize: 12.07,
@@ -1553,6 +2343,7 @@ const TripListScreen = props => {
       </ImageBackground>
     </TouchableOpacity>
   );
+
   //Platform List row view
 
   function isValidColor(color) {
@@ -1584,35 +2375,43 @@ const TripListScreen = props => {
     );
   }
   const OnClickListNavigation = (item, index, isColor) => {
+    if (!item?.available_seats || item?.available_seats === 0) {
+      return;
+    }
 
+    const isLuxury = LuxuryFind(item?.Bus_Type_Name) === true;
+    console.log(isLuxury, 'isLuxurytrue');
     props.navigation.navigate(
       'BusSeatSelectScreen',
-      userPlan === true && FilterData === 'Luxury Coach'
+      userPlan === true && selectBusType === 'lux'
         ? {
           screenTheme: 'Luxury Coach',
           themecolor: '#393939',
           themeColor2: '#D89E2F',
-          item: item
+          item: item,
         }
         : {
-          screenTheme: 'Normal Coach',
-          themecolor:
-            isColor === true
+          screenTheme: isLuxury ? 'Luxury Coach' : 'Normal Coach',
+          themecolor: isLuxury
+            ? '#393939'
+            : isColor === true
               ? isValidColor(item.color)
                 ? item.color
                 : '#1F487C'
               : '#1F487C',
-          themeColor2:
-            isColor === true
+          themeColor2: isLuxury
+            ? '#D89E2F'
+            : isColor === true
               ? isValidColor(item.color)
                 ? item.color
                 : '#1F487C'
               : '#1F487C',
           item: item,
-          Journey_Details: Journey_Details
+          Journey_Details: Journey_Details,
         },
     );
   };
+
   const PlatformColorListItem = ({ item, Index }) => {
     return (
       <TouchableOpacity
@@ -1715,40 +2514,42 @@ const TripListScreen = props => {
   const TripPlanListRow = ({ item, Index, image_url }) => {
     return (
       <View style={styles.rowContainer}>
-      {item ?
-<View>
-<BusBookingPlanView details={[]} item={item} index={Index} />
-        <View style={styles.busOperatorView}>
-          <LinearGradient
-            colors={['#1F487C', '#0890B4']}
-            style={styles.operatorNameView}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 0.5, y: 0.2 }}>
-            <View>
-              <Text style={styles.operatorNameTxt}>Bus Operator</Text>
-              <Text style={styles.operatorBrandTxt}>
-                {item?.Traveler_Agent_Name}
-              </Text>
-            </View>
-            {/* <Image
+        {item ? (
+          <View>
+            <BusBookingPlanView details={[]} item={item} index={Index} />
+            <View style={styles.busOperatorView}>
+              <LinearGradient
+                colors={['#1F487C', '#0890B4']}
+                style={styles.operatorNameView}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 0.5, y: 0.2 }}>
+                <View>
+                  <Text style={styles.operatorNameTxt}>Bus Operator</Text>
+                  <Text style={styles.operatorBrandTxt}>
+                    {item?.Traveler_Agent_Name
+                      ? item?.Traveler_Agent_Name?.length > 25
+                        ? item?.Traveler_Agent_Name?.slice(0, 24) + '...'
+                        : item?.Traveler_Agent_Name
+                      : ''}
+                  </Text>
+                </View>
+                {/* <Image
               source={require('../assets/OperatorIcon.png')}
               style={{ width: 30, height: 30 }}
             /> */}
-          </LinearGradient>
-          <View style={styles.topShareView}></View>
-        </View>
-</View>
-:
-<View style={styles.SkeletonView}>
-   <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-   <Skeleton circle width={50} height={50} />
-  <Skeleton width={250} height={40} />
-</View>
- <Skeleton width={320} height={80} style={{marginTop:20}} />
- </View>
-      }
-  
-     
+              </LinearGradient>
+              <View style={styles.topShareView}></View>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.SkeletonView}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              <Skeleton circle width={50} height={50} />
+              <Skeleton width={250} height={40} />
+            </View>
+            <Skeleton width={320} height={80} style={{ marginTop: 20 }} />
+          </View>
+        )}
       </View>
     );
   };
@@ -1787,16 +2588,19 @@ const TripListScreen = props => {
                 paddingRight: 5,
                 borderTopLeftRadius: 10, // Top left corner rounded
                 borderBottomRightRadius: 10, // Bottom right corner rounded
-                overflow: 'hidden' // Ensure content inside does not overflow outside rounded corners
+                overflow: 'hidden', // Ensure content inside does not overflow outside rounded corners
               }}
-              source={require('../assets/luxuryTopImage.png')}
-            >
+              source={require('../assets/luxuryTopImage.png')}>
               <View style={{ paddingLeft: 8 }}>
                 <Text style={[styles.operatorNameTxt, { color: '#393939' }]}>
                   Bus Operator
                 </Text>
                 <Text style={[styles.operatorBrandTxt, { color: '#393939' }]}>
-                  {item?.Traveler_Agent_Name}
+                  {item?.Traveler_Agent_Name
+                    ? item?.Traveler_Agent_Name?.length > 25
+                      ? item?.Traveler_Agent_Name?.slice(0, 24) + '...'
+                      : item?.Traveler_Agent_Name
+                    : ''}
                 </Text>
               </View>
               {/* <Image
@@ -1822,97 +2626,112 @@ const TripListScreen = props => {
               borderRightColor: 'transparent',
             }}
           /> */}
-
         </View>
       </View>
     );
   };
   //Filter Listview and Row
+  useEffect(() => {
+    if (selectBusType === 'lux' && FilterData !== 'Luxury Coach') {
+      setFilterData('Luxury Coach');
+    }
+  }, [selectBusType]);
+
+  useEffect(() => {
+    if (route?.params?.selectBusType) {
+      setselectedBustype(route.params.selectBusType);
+    }
+  }, []);
+
   const HorizontalFilterListItem = ({ item, Index }) => {
+    const isLuxurySelected =
+      selectBusType === 'lux' &&
+      item?.title === 'Luxury Coach' &&
+      FilterData === 'Luxury Coach';
+
+    const isSelected =
+      (item.id === '6' && isSeater) ||
+      (item.id === '7' && isSleeper) ||
+      (item.id === '4' && isAC) ||
+      (item.id === '5' && isNonAC) ||
+      (item.id === '8' && isDay !== '') ||
+      (item.id === '9' && isNight !== '') ||
+      isLuxurySelected;
+
+    console.log(
+      `Item: ${item.title} | ID: ${item.id} | isSelected: ${isSelected}`,
+    );
+
     return (
       <TouchableOpacity
         style={{ overflow: 'hidden' }}
         onPress={() => OnClickCategoryListFilter(item, Index)}>
-        {item.title === 'Luxury Coach' && item.title === FilterData ? (
+        {isLuxurySelected ? (
           <ImageBackground
             source={require('../assets/luxuryFilterBg.png')}
-            style={[
-              {
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: 70,
-                height: 30,
-                paddingVertical: 5,
-                paddingHorizontal: 8,
-                borderWidth: 1,
-                overflow: 'hidden',
-                borderColor: '#1F487C',
-                borderRadius: 5,
-                marginRight: 5,
-              },
-              { borderColor: 'rgba(57, 57, 57, 1)' },
-            ]}>
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 70,
+              height: 30,
+              paddingVertical: 5,
+              paddingHorizontal: 8,
+              borderWidth: 1,
+              borderColor: '#393939',
+              borderRadius: 5,
+              marginRight: 5,
+            }}>
             <Image
               source={item.icon}
               style={{
                 marginRight: 5,
-                width:
-                  item.title === 'Luxury Coach'
-                    ? 14
-                    : item.title === 'Sleeper'
-                      ? 23
-                      : 16,
-                height: item.title === 'Luxury Coach' ? 20 : 16,
+                width: item.title === 'Sleeper' ? 23 : 16,
+                height: 16,
                 tintColor: '#393939',
               }}
             />
-            <Text style={[styles.filterTitle, { color: '#393939' }]}>
-              {item.title}
-            </Text>
+            <Text style={{ color: '#393939' }}>{item?.title}</Text>
           </ImageBackground>
         ) : (
           <View
-            style={[
-              styles.filterContainer,
-              {
-                backgroundColor:
-                  item.title === FilterData ? '#1F487C' : '#FFFFFF',
-              },
-            ]}>
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              marginRight: 8,
+              backgroundColor: isSelected ? '#1F487C' : '#FFFFFF',
+              borderRadius: 5,
+              borderWidth: 1,
+              borderColor: '#1F487C',
+              // backgroundColor:"red",
+
+              // borderColor: isSelected ? '#1F487C' : '#D0D0D0',
+            }}>
             <Image
               source={item.icon}
               style={{
                 marginRight: 5,
                 width:
-                  item.title === 'Luxury Coach'
-                    ? 14
-                    : item.title === 'Sleeper'
-                      ? 23
+                  item.title === 'Sleeper'
+                    ? 20
+                    : item?.title === 'Luxury Coach'
+                      ? 12
                       : 16,
-                height: item.title === 'Luxury Coach' ? 20 : 16,
-                tintColor: item.title === FilterData ? '#FFFFFF' : '#1F487C',
+                height: 16,
+                tintColor: isSelected ? '#FFFFFF' : '#1F487C',
               }}
             />
-            <Text
-              style={[
-                styles.filterTitle,
-                { color: item.title === FilterData ? '#FFFFFF' : '#1F487C' },
-              ]}>
+            <Text style={{ color: isSelected ? '#FFFFFF' : '#1F487C' }}>
               {item.title}
             </Text>
-            {(item.title === 'Filters' || item.title === 'Sort') && (
-              <Image
-                source={require('../assets/Filters/downArrow.png')}
-                style={styles.filteAarrowIcon}
-              />
-            )}
           </View>
         )}
       </TouchableOpacity>
     );
   };
-
   //ViewMore
   const onStatusSelection = (item, index) => {
     // console.log('Clicked status Button===', item, index);
@@ -1928,19 +2747,527 @@ const TripListScreen = props => {
     if (isFilterSelect === false) {
       setFilterScreenVisible(true);
     }
-    setFilterSelect(!isFilterSelect);
+    // setFilterSelect(!isFilterSelect);
   };
 
+  console.log(normalBus, luxuryBus, regularBus, "seaterloglog");
+
+
   const OnClickCategoryListFilter = (item, index) => {
-    // console.log('Clicked status Button===', item, index);
-    setFilterData(item.title);
-    // if (index === 0) {
-    //   setFilterScreenVisible(true);
-    // } else
     if (index === 0) {
       setSortScreenVisible(true);
+      return;
+    }
+    console.log(item, index, 'selected Items');
+
+    if (item.title === 'Luxury Coach') {
+      if (selectBusType === 'lux' && FilterData === 'Luxury Coach') {
+        setselectedBustype('');
+        setFilterData('');
+      } else {
+        setselectedBustype('lux');
+        setFilterData('Luxury Coach');
+      }
+      return;
+    }
+
+    // Helper functions
+    const safeSplit = str => {
+      if (typeof str === 'string') return str.split(',');
+      return [];
+    };
+
+    const toString = arr => [...new Set(arr)].join(','); // Remove duplicates
+
+    const removeValue = (str, val) => {
+      return toString(safeSplit(str).filter(v => v !== String(val)));
+    };
+
+    const addValue = (str, val) => {
+      const arr = safeSplit(str);
+      if (!arr.includes(String(val))) {
+        arr.push(String(val));
+      }
+      return toString(arr);
+    };
+
+    // 🔹 Handle AC (item.id === '3') → value: 1
+    // if (item.id === '4') {
+    //   const updated = !isAC;
+    //   setIsAC(updated);
+
+    //   if (!updated) {
+    //     setRegularBus(removeValue(regularBus, 1));
+    //     setLuxuryBus(removeValue(luxuryBus, 1));
+    //     setNormalBus(removeValue(normalBus, 1));
+    //   } else {
+    //     if (isSeater) {
+    //       setRegularBus(addValue(addValue(regularBus, 1), 3));
+    //       setLuxuryBus(addValue(addValue(luxuryBus, 1), 3));
+    //       setNormalBus(addValue(addValue(normalBus, 1), 3));
+    //     } else if (isSleeper) {
+    //       setRegularBus(addValue(addValue(regularBus, 1), 4));
+    //       setLuxuryBus(addValue(addValue(luxuryBus, 1), 4));
+    //       setNormalBus(addValue(addValue(normalBus, 1), 4));
+    //     } else {
+    //       setRegularBus(addValue(regularBus, 1));
+    //       setLuxuryBus(addValue(luxuryBus, 1));
+    //       setNormalBus(addValue(normalBus, 1));
+    //     }
+    //   }
+    //   return;
+    // }
+
+    // if (item.id === '4') {
+    //   const updated = !isAC;
+    //   const seaterActive = isSeater;
+    //   const sleeperActive = isSleeper;
+
+    //   setIsAC(updated);
+
+    //   if (!updated) {
+    //     // Remove AC-related values
+    //     setRegularBus(removeValue(regularBus, 1));
+    //     setLuxuryBus(removeValue(luxuryBus, 1));
+    //     setNormalBus(removeValue(normalBus, 1));
+    //   } else {
+    //     // Add AC-related values based on current Seater/Sleeper state
+    //     if (seaterActive) {
+    //       setRegularBus(addValue(addValue(regularBus, 1), 3));
+    //       setLuxuryBus(addValue(addValue(luxuryBus, 1), 3));
+    //       setNormalBus(addValue(addValue(normalBus, 1), 3));
+    //     } else if (sleeperActive) {
+    //       setRegularBus(addValue(addValue(regularBus, 1), 4));
+    //       setLuxuryBus(addValue(addValue(luxuryBus, 1), 4));
+    //       setNormalBus(addValue(addValue(normalBus, 1), 4));
+    //     } else {
+    //       setRegularBus(addValue(regularBus, 1));
+    //       setLuxuryBus(addValue(luxuryBus, 1));
+    //       setNormalBus(addValue(normalBus, 1));
+    //     }
+    //   }
+
+    //   return;
+    // }
+
+    // if (item.id === '4') {
+    //   const updated = !isAC;
+    //   const seaterActive = isSeater;
+    //   const sleeperActive = isSleeper;
+
+    //   setIsAC(updated);
+
+    //   if (!updated) {
+    //     // Turned OFF — remove AC
+    //     setRegularBus(removeValue(regularBus, 1));
+    //     setLuxuryBus(removeValue(luxuryBus, 1));
+    //     setNormalBus(removeValue(normalBus, 1));
+    //   } else {
+    //     // Turned ON — add AC
+    //     let valueToAdd = 1;
+    //     if (seaterActive) valueToAdd += 3;
+    //     if (sleeperActive) valueToAdd += 4;
+
+    //     setRegularBus(addValue(regularBus, valueToAdd));
+    //     setLuxuryBus(addValue(luxuryBus, valueToAdd));
+    //     setNormalBus(addValue(normalBus, valueToAdd));
+    //   }
+
+    //   return;
+    // }
+
+    // if (item.id === '4') {
+    //   const updatedSeater = !isSeater;
+    //   const updatedSleeper = false; // we are unselecting Sleeper
+    //   const updatedAC = isAC;
+    //   const updatedNonAC = isNonAC;
+
+    //   setIsSeater(updatedSeater);
+    //   setIsSleeper(updatedSleeper);
+
+    //   if (!updatedSeater) {
+    //     setSeatType(null);
+    //     setRegularBus(removeValue(regularBus, 3));
+    //     setLuxuryBus(removeValue(luxuryBus, 3));
+    //     setNormalBus(removeValue(normalBus, 3));
+    //   } else {
+    //     setSeatType('Seater');
+
+    //     // Clear old combinations
+    //     setRegularBus([]);
+    //     setLuxuryBus([]);
+    //     setNormalBus([]);
+
+    //     const valuesToAdd = [];
+
+    //     if (updatedAC) valuesToAdd.push(1); // AC
+    //     if (updatedNonAC) valuesToAdd.push(2); // Non-AC
+
+    //     // Always push seater (3)
+    //     valuesToAdd.push(3);
+
+    //     const newReg = [];
+    //     const newLux = [];
+    //     const newNorm = [];
+
+    //     valuesToAdd.forEach(val => {
+    //       newReg.push(val);
+    //       newLux.push(val);
+    //       newNorm.push(val);
+    //     });
+
+    //     setRegularBus(newReg);
+    //     setLuxuryBus(newLux);
+    //     setNormalBus(newNorm);
+    //   }
+
+    //   return;
+    // }
+
+    if (item.id === '4') {
+      const updatedAC = !isAC;
+      setIsAC(updatedAC);
+      setIsNonAC(false); // unselect Non-AC if AC selected
+
+      // Clear current bus types first
+      setRegularBus([]);
+      setLuxuryBus([]);
+      setNormalBus([]);
+      setSelectedAC("")
+
+      if (updatedAC) {
+        // Show only AC + Seater and AC + Sleeper
+        const types = [1]; // 1 = AC
+        if (isSeater) types.push(3); // 3 = Seater
+        if (isSleeper) types.push(4); // 4 = Sleeper
+        setSelectedAC("AC")
+        setRegularBus(types);
+        setLuxuryBus(types);
+        setNormalBus(types);
+      } else {
+        // AC unselected → show ALL buses
+        setRegularBus([1, 2, 3, 4]); // AC, Non-AC, Seater, Sleeper
+        setLuxuryBus([1, 2, 3, 4]);
+        setNormalBus([1, 2, 3, 4]);
+      }
+
+      return;
+    }
+
+    // 🔹 Handle Non-AC (item.id === '4') → value: 2
+    // if (item.id === '5') {
+    //   const updated = !isNonAC;
+    //   setIsNonAC(updated);
+
+    //   if (!updated) {
+    //     setRegularBus(removeValue(regularBus, 2));
+    //     setLuxuryBus(removeValue(luxuryBus, 2));
+    //     setNormalBus(removeValue(normalBus, 2));
+    //   } else {
+    //     if (isSeater) {
+    //       setRegularBus(addValue(addValue(regularBus, 2), 3));
+    //       setLuxuryBus(addValue(addValue(luxuryBus, 2), 3));
+    //       setNormalBus(addValue(addValue(normalBus, 2), 3));
+    //     } else if (isSleeper) {
+    //       setRegularBus(addValue(addValue(regularBus, 2), 4));
+    //       setLuxuryBus(addValue(addValue(luxuryBus, 2), 4));
+    //       setNormalBus(addValue(addValue(normalBus, 2), 4));
+    //     } else {
+    //       setRegularBus(addValue(regularBus, 2));
+    //       setLuxuryBus(addValue(luxuryBus, 2));
+    //       setNormalBus(addValue(normalBus, 2));
+    //     }
+    //   }
+    //   return;
+    // }
+
+    if (item.id === '5') {
+      const updatedNonAC = !isNonAC;
+      setIsNonAC(updatedNonAC);
+      setIsAC(false); // Unselect AC if Non-AC is selected
+
+      // Clear selections
+      setRegularBus([]);
+      setLuxuryBus([]);
+      setNormalBus([]);
+      setSelectedAC("")
+
+      if (updatedNonAC) {
+        // Only Non-AC buses (id = 2)
+        setSelectedAC("NonAC")
+        setRegularBus([2]);
+        setLuxuryBus([2]);
+        setNormalBus([2]);
+      } else {
+        // Show all if Non-AC unselected
+        setRegularBus([1, 2, 3, 4]);
+        setLuxuryBus([1, 2, 3, 4]);
+        setNormalBus([1, 2, 3, 4]);
+      }
+
+      return;
+    }
+
+    // 🔹 Handle Seater (item.id === '5') → value: 3
+    if (item.id === '6') {
+      // const updatedSeater = !isSeater;
+      // setIsSeater(updatedSeater);
+      // setIsSleeper(false);
+
+
+
+      if (isSeater === false) {
+        setIsSleeper(false);
+        setSeatType('Seater');
+        setIsSeater(true);
+      }
+      else if (isSeater === true) {
+        setSeatType("")
+        setIsSeater(false)
+      }
+
+
+
+      // setRegularBus([]);
+      // setLuxuryBus([]);
+      // setNormalBus([]);
+      // setSeatType(null);
+      // setSeatType(null);
+
+
+      // if (!updatedSeater) {
+      //   setSeatType(null);
+      //   setRegularBus(removeValue(regularBus, 3));
+      //   setLuxuryBus(removeValue(luxuryBus, 3));
+      //   setNormalBus(removeValue(normalBus, 3));
+      // } else {
+      //   setSeatType('Seater');
+
+      //   if (isAC) {
+      //     setRegularBus(addValue(addValue(regularBus, 1), 3));
+      //     setLuxuryBus(addValue(addValue(luxuryBus, 1), 3));
+      //     setNormalBus(addValue(addValue(normalBus, 1), 3));
+      //   } else if (isNonAC) {
+      //     setRegularBus(addValue(addValue(regularBus, 2), 3));
+      //     setLuxuryBus(addValue(addValue(luxuryBus, 2), 3));
+      //     setNormalBus(addValue(addValue(normalBus, 2), 3));
+      //   } else {
+      //     // setRegularBus(removeValue(regularBus, 4));
+      //     // setLuxuryBus(removeValue(luxuryBus, 4));
+      //     // setNormalBus(removeValue(normalBus, 4));
+
+      //     setRegularBus(addValue(regularBus, 3));
+      //     setLuxuryBus(addValue(luxuryBus, 3));
+      //     setNormalBus(addValue(normalBus, 3));
+      //     // setRegularBus(prev => addValue(removeValue(prev, 4), 3));
+      //     // setLuxuryBus(prev => addValue(removeValue(prev, 4), 3));
+      //     // setNormalBus(prev => addValue(removeValue(prev, 4), 3));
+      //   }
+      // }
+
+      return;
+    }
+
+    // 🔹 Handle Sleeper (item.id === '7') → value: 4
+    if (item.id === '7') {
+      // const updatedSleeper = !isSleeper;
+      // setIsSleeper(updatedSleeper);
+      // setIsSeater(false);
+
+
+
+      // setRegularBus([]);
+      // setLuxuryBus([]);
+      // setNormalBus([]);
+      // setSeatType(null);
+      // setSeatType(null);
+      // setRegularBus(removeValue(regularBus, 3));
+      // setLuxuryBus(removeValue(luxuryBus, 3));
+      // setNormalBus(removeValue(normalBus, 3));
+
+
+      if (isSleeper === false) {
+        setIsSeater(false);
+        setSeatType('Sleeper');
+        setIsSleeper(true);
+      }
+      else if (isSleeper === true) {
+        setSeatType("")
+        setIsSleeper(false)
+      }
+
+      // if (!updatedSleeper) {
+      //   setSeatType(null);
+      //   setRegularBus(removeValue(regularBus, 4));
+      //   setLuxuryBus(removeValue(luxuryBus, 4));
+      //   setNormalBus(removeValue(normalBus, 4));
+      // } else {
+      //   setSeatType('Sleeper');
+
+      //   if (isAC) {
+      //     setRegularBus(addValue(addValue(regularBus, 1), 4));
+      //     setLuxuryBus(addValue(addValue(luxuryBus, 1), 4));
+      //     setNormalBus(addValue(addValue(normalBus, 1), 4));
+      //   } else if (isNonAC) {
+      //     setRegularBus(addValue(addValue(regularBus, 2), 4));
+      //     setLuxuryBus(addValue(addValue(luxuryBus, 2), 4));
+      //     setNormalBus(addValue(addValue(normalBus, 2), 4));
+      //   } else {
+      //     // setRegularBus(removeValue(regularBus, 3));
+      //     // setLuxuryBus(removeValue(luxuryBus, 3));
+      //     // setNormalBus(removeValue(normalBus, 3));
+
+      //     setRegularBus(addValue(regularBus, 4));
+      //     setLuxuryBus(addValue(luxuryBus, 4));
+      //     setNormalBus(addValue(normalBus, 4));
+      //   //   setRegularBus(prev => addValue(removeValue(prev, 3), 4));
+      //   //  setLuxuryBus(prev => addValue(removeValue(prev, 3), 4));
+      //   //  setNormalBus(prev => addValue(removeValue(prev, 3), 4));
+      //   }
+      // }
+      // console.log(isSleeper, normalBus, luxuryBus, regularBus, "sleeperloglog");
+      return;
+    }
+
+    // if (item.id === '8') {
+    //   // const updatedDay = !isDay;
+    //   setIsDay('6:00 AM - 6:00 PM');
+    //   setIsNight(false); // Unselect Night if Day is selected
+
+    //   // Clear previous selections
+    //   setIsDay([]);
+
+    //   // if (updatedDay) {
+    //   //   // Show Morning (id = 1) and Afternoon (id = 2)
+    //   //   setFilteredTimes([1, 2]);
+    //   // } else {
+    //   //   // Show all if Day is unselected
+    //   //   setFilteredTimes([1, 2, 3, 4]);
+    //   // }
+
+    //   return;
+    // }
+
+    if (item.id === '8') {
+      setPickUpTime(prevTime => (prevTime === '6:00 AM - 11:00 AM' ? '' : '6:00 AM - 11:00 AM'));
+      if (isDay === '') {
+        setIsDay('6:00 AM - 11:00 AM');
+        setIsNight(''); // Unselect Night if Day is selected
+      } else {
+        setIsDay(''); // Clear Day if already selected
+      }
+
+      return;
+    }
+
+    if (item.id === '9') {
+      setPickUpTime(prevTime => (prevTime === '6:00 PM - 11:00 PM' ? '' : '6:00 PM - 11:00 PM'));
+      if (isNight === '') {
+        setIsNight('6:00 PM - 11:00 PM'); // Unselect Night if Day is selected
+        setIsDay('');
+      } else {
+        setIsNight(''); // Clear Day if already selected
+      }
+
+      return;
+    }
+
+    // if (item.id === '9') {
+    //   const updatedNight = !isNight;
+    //   setIsNight(updatedNight);
+    //   setIsDay(false); // Unselect Day if Night is selected
+
+    //   // Clear previous selections
+    //   setFilteredTimes([]);
+
+    //   if (updatedNight) {
+    //     // Show Evening (id = 3) and Late Night (id = 4)
+    //     setFilteredTimes([3, 4]);
+    //   } else {
+    //     // Show all if Night is unselected
+    //     setFilteredTimes([1, 2, 3, 4]);
+    //   }
+
+    //   return;
+    // }
+
+    // 🔹 Handle Luxury Coach
+    if (item.title === 'Luxury Coach') {
+      if (selectBusType === 'lux' && FilterData === 'Luxury Coach') {
+        setselectedBustype('');
+        setFilterData('');
+      } else {
+        setselectedBustype('lux');
+        setFilterData('Luxury Coach');
+      }
     }
   };
+
+  // const OnClickCategoryListFilter = (item, index) => {
+  //   if (index === 0) {
+  //     setSortScreenVisible(true);
+  //     return;
+  //   }
+
+  //   if (item.title === 'Luxury Coach') {
+  //     if (selectBusType === 'lux' && FilterData === 'Luxury Coach') {
+  //       setselectedBustype('');
+  //       setFilterData('');
+  //     } else {
+  //       setselectedBustype('lux');
+  //       setFilterData('Luxury Coach');
+  //     }
+  //     return;
+  //   }
+
+  //   // Seater
+  //   if (item.id === '5') {
+  //     if (isSeater) {
+  //       setIsSeater(false);
+  //       setSeatType(null); // Reset this!
+  //       setNormalBus('');
+  //       setLuxuryBus('');
+  //       setRegularBus('');
+  //     } else {
+  //       setIsSeater(true);
+  //       setSeatType("Seater"); // Sync this!
+  //       setIsSleeper(false);
+  //     }
+  //   }
+
+  //   // Sleeper
+  //   if (item.id === '7') {
+  //     if (isSleeper) {
+  //       setIsSleeper(false);
+  //       setSeatType(null); // Reset this!
+  //       if (luxuryBus?.includes('4') || normalBus?.includes('4') || regularBus?.includes('4')) {
+  //         if (luxuryBus?.includes('1') || normalBus?.includes('1') || regularBus?.includes('1')) {
+  //           setNormalBus('1');
+  //           setLuxuryBus('1');
+  //           setRegularBus('1');
+  //         } else {
+  //           setNormalBus('2');
+  //           setLuxuryBus('2');
+  //           setRegularBus('2');
+  //         }
+  //       }
+  //     } else {
+  //       setIsSleeper(true);
+  //       setSeatType("Sleeper"); // Sync this!
+  //       setIsSeater(false);
+  //     }
+  //   }
+
+  //   // AC
+  //   if (item.id === '3') {
+  //     setIsAC(!isAC);
+  //   }
+
+  //   // Non-AC
+  //   if (item.id === '4') {
+  //     setIsNonAC(!isNonAC);
+  //   }
+  // };
 
   const onShare = async () => {
     try {
@@ -1967,11 +3294,11 @@ const TripListScreen = props => {
     <SafeAreaView
       style={{
         flex: 1,
-        backgroundColor: FilterData === 'Luxury Coach' ? '#F6B642' : '#1F487C',
+        backgroundColor: selectBusType === 'lux' ? '#F6B642' : '#1F487C',
       }}
       edges={['right', 'left', 'top']}>
       <View style={styles.container}>
-        {FilterData === 'Luxury Coach' ? (
+        {selectBusType === 'lux' ? (
           <ImageBackground
             source={require('../assets/luxuryHeaderBg.png')}
             style={{
@@ -2008,16 +3335,43 @@ const TripListScreen = props => {
               <View style={styles.topSubView}>
                 <View style={styles.leftPlaceView}>
                   {/* FROM Station */}
-                  {/* <View style={styles.leftPlaceSubView}>
-                    <Text style={[styles.fromPlaceTxt, {color: '#393939'}]}>
-                      {stationPoints.from_id
-                        ? stationPoints.from_id
-                        : 'Select From'}
+                  <View style={styles.leftPlaceSubView}>
+                    <Text style={[styles.fromPlaceTxt, { color: '#393939' }]}>
+                      {(Journey_Details?.from_station_name
+                        ? Journey_Details?.from_station_name
+                        : Journey_Details?.from
+                      ).length > 10
+                        ? `${(
+                          (Journey_Details?.from_station_name
+                            ? Journey_Details?.from_station_name
+                            : Journey_Details?.from
+                          )
+                            .charAt(0)
+                            .toUpperCase() +
+                          (Journey_Details?.from_station_name
+                            ? Journey_Details?.from_station_name
+                            : Journey_Details?.from
+                          )
+                            .slice(1)
+                            .toLowerCase()
+                        ).slice(0, 10)}...`
+                        : (Journey_Details?.from_station_name
+                          ? Journey_Details?.from_station_name
+                          : Journey_Details?.from
+                        )
+                          .charAt(0)
+                          .toUpperCase() +
+                        (Journey_Details?.from_station_name
+                          ? Journey_Details?.from_station_name
+                          : Journey_Details?.from
+                        )
+                          .slice(1)
+                          .toLowerCase()}
                     </Text>
-                    <Text style={[styles.fromDateTxt, {color: '#393939'}]}>
-                      {formatDateTime(selectedDate)}
+                    <Text style={[styles.fromDateTxt, { color: '#393939' }]}>
+                      {formattedDate}
                     </Text>
-                  </View> */}
+                  </View>
 
                   {/* SVG Arrow Icon */}
                   <View style={{ paddingHorizontal: 10 }}>
@@ -2029,7 +3383,36 @@ const TripListScreen = props => {
                   {/* TO Station */}
                   <View style={styles.dropPlaceView}>
                     <Text style={[styles.dropPlaceTxt, { color: '#393939' }]}>
-                      {/* {stationPoints.to_id ? stationPoints.to_id : 'Select To'} */}
+                      {(Journey_Details?.to_station_name
+                        ? Journey_Details?.to_station_name
+                        : Journey_Details?.to
+                      ).length > 10
+                        ? `${(
+                          (Journey_Details?.to_station_name
+                            ? Journey_Details?.to_station_name
+                            : Journey_Details?.to
+                          )
+                            .charAt(0)
+                            .toUpperCase() +
+                          (Journey_Details?.to_station_name
+                            ? Journey_Details?.to_station_name
+                            : Journey_Details?.to
+                          )
+                            .slice(1)
+                            .toLowerCase()
+                        ).slice(0, 10)}...`
+                        : (Journey_Details?.to_station_name
+                          ? Journey_Details?.to_station_name
+                          : Journey_Details?.to
+                        )
+                          .charAt(0)
+                          .toUpperCase() +
+                        (Journey_Details?.to_station_name
+                          ? Journey_Details?.to_station_name
+                          : Journey_Details?.to
+                        )
+                          .slice(1)
+                          .toLowerCase()}
                     </Text>
 
                     {/* Bus Count Placeholder (You can update this dynamically) */}
@@ -2038,7 +3421,8 @@ const TripListScreen = props => {
                         <BusIcon width="100%" height="100%" color="#393939" />
                       </Svg>
                       <Text style={[styles.buseCountTxt, { color: '#393939' }]}>
-                        133 Buses
+                        {' '}
+                        {Bus_Filter_List?.length} Buses
                       </Text>
                     </View>
                   </View>
@@ -2083,7 +3467,42 @@ const TripListScreen = props => {
               <View style={styles.topSubView}>
                 <View style={styles.leftPlaceView}>
                   <View style={styles.leftPlaceSubView}>
-                    <Text style={styles.fromPlaceTxt}> {Journey_Details?.from_station_name}</Text>
+                    <TouchableOpacity
+                      onPress={() => setPlaceModalVisible(true)}>
+                      <Text style={styles.fromPlaceTxt}>
+                        {(Journey_Details?.from_station_name
+                          ? Journey_Details?.from_station_name
+                          : Journey_Details?.from
+                        ).length > 10
+                          ? `${(
+                            (Journey_Details?.from_station_name
+                              ? Journey_Details?.from_station_name
+                              : Journey_Details?.from
+                            )
+                              .charAt(0)
+                              .toUpperCase() +
+                            (Journey_Details?.from_station_name
+                              ? Journey_Details?.from_station_name
+                              : Journey_Details?.from
+                            )
+                              .slice(1)
+                              .toLowerCase()
+                          ).slice(0, 10)}...`
+                          : (Journey_Details?.from_station_name
+                            ? Journey_Details?.from_station_name
+                            : Journey_Details?.from
+                          )
+                            .charAt(0)
+                            .toUpperCase() +
+                          (Journey_Details?.from_station_name
+                            ? Journey_Details?.from_station_name
+                            : Journey_Details?.from
+                          )
+                            .slice(1)
+                            .toLowerCase()}
+                      </Text>
+                    </TouchableOpacity>
+
                     <Text style={styles.fromDateTxt}>{formattedDate}</Text>
                   </View>
                   <View style={{ paddingHorizontal: 10 }}>
@@ -2092,12 +3511,47 @@ const TripListScreen = props => {
                     </Svg>
                   </View>
                   <View style={styles.dropPlaceView}>
-                    <Text style={styles.dropPlaceTxt}> {Journey_Details?.to_station_name}</Text>
+                    <Text style={styles.dropPlaceTxt}>
+                      {' '}
+                      {(Journey_Details?.to_station_name
+                        ? Journey_Details?.to_station_name
+                        : Journey_Details?.to
+                      ).length > 10
+                        ? `${(
+                          (Journey_Details?.to_station_name
+                            ? Journey_Details?.to_station_name
+                            : Journey_Details?.to
+                          )
+                            .charAt(0)
+                            .toUpperCase() +
+                          (Journey_Details?.to_station_name
+                            ? Journey_Details?.to_station_name
+                            : Journey_Details?.to
+                          )
+                            .slice(1)
+                            .toLowerCase()
+                        ).slice(0, 10)}...`
+                        : (Journey_Details?.to_station_name
+                          ? Journey_Details?.to_station_name
+                          : Journey_Details?.to
+                        )
+                          .charAt(0)
+                          .toUpperCase() +
+                        (Journey_Details?.to_station_name
+                          ? Journey_Details?.to_station_name
+                          : Journey_Details?.to
+                        )
+                          .slice(1)
+                          .toLowerCase()}
+                    </Text>
                     <View style={styles.buseCountView}>
                       <Svg style={{ width: 16, height: 16 }}>
                         <BusIcon width="80%" height="100%" />
                       </Svg>
-                      <Text style={styles.buseCountTxt}> {Bus_Filter_List?.length} Buses</Text>
+                      <Text style={styles.buseCountTxt}>
+                        {' '}
+                        {Bus_Filter_List?.length} Buses
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -2122,8 +3576,9 @@ const TripListScreen = props => {
         <View
           style={{
             height: 100, // Decrease the height as needed
-            paddingHorizontal: 8,
-            paddingVertical: 2
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            marginTop:4
           }}>
           {/* <Swiper
             loop={true}
@@ -2173,7 +3628,7 @@ const TripListScreen = props => {
                   justifyContent: 'center',
                   overflow: 'hidden',
                   minWidth: 40,
-                  height: 30,
+                  height: 31,
                   paddingVertical: 5,
                   paddingHorizontal: 8,
                   borderWidth: 1,
@@ -2210,6 +3665,27 @@ const TripListScreen = props => {
                 </>
               )}
             </TouchableOpacity>
+
+            {filterCount > 0 && (
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: 18,
+                  backgroundColor: 'red',
+                  // padding: 10,
+                  borderRadius: 100,
+                  borderCurve: 50,
+                  height: 20,
+                  width: 20,
+
+                  justifyContent: 'center', // Center the text inside
+                  alignItems: 'center', // Center the text horizontally
+                }}>
+                <Text style={{ color: 'white', fontSize: 10 }}>
+                  {filterCount > 0 && filterCount}
+                </Text>
+              </View>
+            )}
           </View>
           <FlatList
             data={dataFilter}
@@ -2249,63 +3725,100 @@ const TripListScreen = props => {
           }
           keyExtractor={item => item.toString()}
         /> */}
-        {Bus_Filter_List?.length > 0 ?
+        {
+          loading === true ? (
+            <ScrollView contentContainerStyle={{ paddingVertical: 10 }}>
+                {[...Array(5)].map((_, index) => (
+                  <View key={index} style={styles.SkeletonView}>
+                    <View
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                      <Skeleton circle width={50} height={50} />
+                      <Skeleton width={250} height={40} />
+                    </View>
+                    <Skeleton width={320} height={80} style={{ marginTop: 20 }} />
+                  </View>
+                ))}
+              </ScrollView>
+          )  :
+        
+        <>
+        {Bus_Filter_List?.length > 0 && successLoader === "success" ? (
           <FlatList
-          data={Bus_Filter_List}
-          renderItem={({ item, index }) =>
-            // userPlan === true && FilterData === 'Luxury Coach' ? (
-            LuxuryFind(item?.Bus_Type_Name) === true ? (
-              <TripLuxuryCoachListRow
-                item={item}
-                Index={index}
-                image_url={item.image_url}
-              />
-            ) : userPlan === true ? (
-              <TripPlanListRow
-                item={item}
-                Index={index}
-                image_url={item.image_url}
-              />
-            ) : (
-              <TripListRow
-                item={item}
-                Index={index}
-                image_url={item.image_url}
-              />
+            data={Bus_Filter_List}
+            renderItem={({ item, index }) =>
+              // userPlan === true && FilterData === 'Luxury Coach' ? (
+              LuxuryFind(item?.Bus_Type_Name) === true ? (
+                <TripLuxuryCoachListRow
+                  item={item}
+                  Index={index}
+                  image_url={item.image_url}
+                />
+              ) : userPlan === true ? (
+                <TripPlanListRow
+                  item={item}
+                  Index={index}
+                  image_url={item.image_url}
+                />
+              ) : (
+                <TripListRow
+                  item={item}
+                  Index={index}
+                  image_url={item.image_url}
+                />
+              )
+            }
+            keyExtractor={(item, index) => index.toString()}
+          />
+        ) :
+          successLoader === "fail" || loading === false || loading === null ? (<View style={{display:"flex" ,justifyContent:"center",alignItems:"center",flexDirection:'row',height:200}}>
+        <Text style={{color:"#1f487c",fontWeight:"bold",fontSize:20}}>No buses found</Text>
+        </View>) :
+            (
+              <ScrollView contentContainerStyle={{ paddingVertical: 10 }}>
+                {[...Array(5)].map((_, index) => (
+                  <View key={index} style={styles.SkeletonView}>
+                    <View
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                      <Skeleton circle width={50} height={50} />
+                      <Skeleton width={250} height={40} />
+                    </View>
+                    <Skeleton width={320} height={80} style={{ marginTop: 20 }} />
+                  </View>
+                ))}
+              </ScrollView>
             )
-          }
-          keyExtractor={(item, index) => index.toString()}
-        />
-        :
-        <ScrollView contentContainerStyle={{ paddingVertical: 10 }}>
-      {[...Array(5)].map((_, index) => (
-        <View key={index} style={styles.SkeletonView}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-            <Skeleton circle width={50} height={50} />
-            <Skeleton width={250} height={40} />
-          </View>
-          <Skeleton width={320} height={80} style={{ marginTop: 20 }} />
-        </View>
-      ))}
-    </ScrollView>
-
         }
-      
+        </>
+        }
       </View>
       <View>
         <ViewMoreScreen
           visible={statusVisible}
           busData={busData}
-          onClose={() => setStatusVisible(false)}
+          jdate={busData?.BUS_START_DATE}
+          tbs_discount={tbs_discount}
+          busPrice={busData?.Fare}
+          onClose={() => {
+            setStatusVisible(false)
+            setSelectedButton(null);
+          }}
           Data={'Trip seats and details'}
+          selectedButton={selectedButton}
+          setSelectedButton={setSelectedButton}
+          selectBusType={luxBus}
         />
       </View>
       <View>
         <SortInsightsScreen
-          ticketList={Bus_List}
+          // ticketList={Bus_List}
+          ticketList={Bus_Filter_List}
           visible={sortScreenVisible}
           onClose={() => setSortScreenVisible(false)}
           Data={'Trip seats and details'}
+          setSelectedOptions={setSelectedOptions}
+          selectedOptions={selectedOptions}
+          setSelectedIndex={setSelectedIndex}
+          selectedIndex={selectedIndex}
         />
       </View>
       <View>
@@ -2319,6 +3832,7 @@ const TripListScreen = props => {
             selectedBusesAll={selectedBusesAll}
             selectedBusesLuxury={selectedBusesLuxury}
             selectedBusesRegular={selectedBusesRegular}
+            selectedBusType={selectedBusType}
             isSelectedAC={isSelectedAC}
             setSelectedAC={setSelectedAC}
             isSeatType={isSeatType}
@@ -2329,6 +3843,21 @@ const TripListScreen = props => {
             setLuxuryBus={setLuxuryBus}
             normalBus={normalBus}
             setNormalBus={setNormalBus}
+            setFilterCount={setFilterCount}
+            setIsAC={setIsAC}
+            setIsNonAC={setIsNonAC}
+            isNonAC={isNonAC}
+            isAC={isAC}
+            setIsSleeper={setIsSleeper}
+            isSleeper={isSleeper}
+            setIsSeater={setIsSeater}
+            isSeater={isSeater}
+            setIsDay={setIsDay}
+            setIsNight={setIsNight}
+            isDay={isDay}
+            isNight={isNight}
+            pickuptime={pickuptime}
+            setPickUpTime={setPickUpTime}
           />
         </KeyboardAvoidingView>
       </View>
@@ -2336,6 +3865,11 @@ const TripListScreen = props => {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
       />
+      {/* <PlacechangeModal
+        isVisible={placeModalVisible}
+        onClose={() => setPlaceModalVisible(false)}
+        placeName={Journey_Details?.from_station_name || Journey_Details?.from}
+      /> */}
     </SafeAreaView>
   );
 };

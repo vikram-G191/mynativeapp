@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Image, View, Text, StyleSheet } from 'react-native';
+import { Image, View, Text, StyleSheet, StatusBar } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -70,150 +70,156 @@ const BottomTabs = () => {
 
 
   return (
-    <Tab.Navigator
-      screenOptions={() => ({
-        tabBarItemStyle: { borderRadius: 25 },
-        tabBarActiveBackgroundColor: 'rgba(255, 255, 255, 0.2)',
-        tabBarInactiveBackgroundColor: '#1F487C',
-        tabBarStyle: { backgroundColor: '#1F487C', }
-      })}
-    >
+    <>
+      <StatusBar
+        barStyle="light-content"
+        translucent={true}
+        backgroundColor="transparent"
+      />
+      <Tab.Navigator
+        screenOptions={() => ({
+          tabBarItemStyle: { borderRadius: 25 },
+          tabBarActiveBackgroundColor: 'rgba(255, 255, 255, 0.2)',
+          tabBarInactiveBackgroundColor: '#1F487C',
+          tabBarStyle: { backgroundColor: '#1F487C', }
+        })}
+      >
 
-      <Tab.Screen name="HomeStack" component={HomeStack} options={{
-        tabBarLabel: 'Home',
+        <Tab.Screen name="HomeStack" component={HomeStack} options={{
+          tabBarLabel: 'Home',
+          headerShown: false,
+          tabBarLabelStyle: {
+            fontWeight: '600', fontSize: 12,
+            lineHeight: 15, color: '#FFF',
+          },
+          tabBarIcon: ({ focused, color }) => {
+            return (
+              focused ?
 
-        headerShown: false,
-        tabBarLabelStyle: {
-          fontWeight: '600', fontSize: 12,
-          lineHeight: 15, color: '#FFF',
-        },
-        tabBarIcon: ({ focused, color }) => {
-          return (
-            focused ?
-
-              Platform.OS === 'ios' ? (
-                <Image
-                  source={require('../assets/home.gif')}
-                  resizeMode='contain'
-                  style={{ height: 35, width: 40 }}
+                Platform.OS === 'ios' ? (
+                  <Image
+                    source={require('../assets/home.gif')}
+                    resizeMode='contain'
+                    style={{ height: 35, width: 40 }}
+                  />
+                ) : (
+                  <FastImage
+                    source={require('../assets/home.gif')}
+                    style={{ height: 36, width: 40 }}
+                    resizeMode={FastImage.resizeMode.contain}
+                  />
+                )
+                :
+                <SvgXml
+                  xml={iconsvg1(focused ? '#5C469E' : '#797C88')}
+                  width={30}
+                  height={30}
+                  viewBox="0 0 40 40"
+                  color={color} // Pass the color prop
                 />
-              ) : (
-                <FastImage
-                  source={require('../assets/home.gif')}
-                  style={{ height: 36, width: 40 }}
-                  resizeMode={FastImage.resizeMode.contain}
-                />
-              )
-              :
-              <SvgXml
-                xml={iconsvg1(focused ? '#5C469E' : '#797C88')}
-                width={30}
-                height={30}
-                viewBox="0 0 40 40"
-                color={color} // Pass the color prop
-              />
-          )
-        }
-      }} />
+            )
+          }
+        }} />
 
-      <Tab.Screen name="BookingHistoryScreen" component={BookingHistoryScreen} options={{
-        headerShown: false,
-        tabBarLabel: 'Bookings',
-        tabBarLabelStyle: { fontWeight: '600', fontSize: 12, lineHeight: 15, color: '#FFF' },
-        tabBarIcon: ({ focused, color }) => {
-          return (
-            focused ?
-              Platform.OS === 'ios' ? (
-                <Image source={require('../assets/ticket.gif')}
-                  resizeMode='contain'
-                  style={{ height: 40, width: 40 }} />
+        <Tab.Screen name="BookingHistoryScreen" component={BookingHistoryScreen} options={{
+          headerShown: false,
+          tabBarLabel: 'Bookings',
+          tabBarLabelStyle: { fontWeight: '600', fontSize: 12, lineHeight: 15, color: '#FFF' },
+          tabBarIcon: ({ focused, color }) => {
+            return (
+              focused ?
+                Platform.OS === 'ios' ? (
+                  <Image source={require('../assets/ticket.gif')}
+                    resizeMode='contain'
+                    style={{ height: 40, width: 40 }} />
 
-              ) : (
-                <FastImage
-                  source={require('../assets/ticket.gif')}
-                  style={{ height: 40, width: 40 }}
-                  resizeMode={FastImage.resizeMode.contain}
-                />
-              )
-              :
-              <SvgXml
-                xml={iconsvg2(focused ? '#5C469E' : '#797C88')}
-                width={30}
-                height={30}
-                viewBox="0 0 32 32"
-                color={color} // Pass the color prop
-              />)
-        }
-      }} />
+                ) : (
+                  <FastImage
+                    source={require('../assets/ticket.gif')}
+                    style={{ height: 40, width: 40 }}
+                    resizeMode={FastImage.resizeMode.contain}
+                  />
+                )
+                :
+                <SvgXml
+                  xml={iconsvg2(focused ? '#5C469E' : '#797C88')}
+                  width={30}
+                  height={30}
+                  viewBox="0 0 32 32"
+                  color={color} // Pass the color prop
+                />)
+          }
+        }} />
 
-      <Tab.Screen name="HelpScreen" component={HelpScreen} options={{
-        headerShown: false,
-        headerTitle: 'Help & Support',
-        headerTitleStyle: { color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 20 },
-        headerStyle: { backgroundColor: '#1F487C', },
-        tabBarLabel: 'Help',
-        tabBarLabelStyle: { fontWeight: '600', fontSize: 12, lineHeight: 15, color: '#FFF' },
-        tabBarIcon: ({ focused, color }) => {
-          return (
-            focused ?
+        <Tab.Screen name="HelpScreen" component={HelpScreen} options={{
+          headerShown: false,
+          headerTitle: 'Help & Support',
+          headerTitleStyle: { color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 20 },
+          headerStyle: { backgroundColor: '#1F487C', },
+          tabBarLabel: 'Help',
+          tabBarLabelStyle: { fontWeight: '600', fontSize: 12, lineHeight: 15, color: '#FFF' },
+          tabBarIcon: ({ focused, color }) => {
+            return (
+              focused ?
 
-              Platform.OS === 'ios' ? (
-                <Image source={require('../assets/help.gif')}
-                  resizeMode='contain'
-                  style={{ height: 40, width: 40 }} />
+                Platform.OS === 'ios' ? (
+                  <Image source={require('../assets/help.gif')}
+                    resizeMode='contain'
+                    style={{ height: 40, width: 40 }} />
 
 
-              ) : (
-                <FastImage
-                  source={require('../assets/help.gif')}
-                  style={{ height: 40, width: 40 }}
-                  resizeMode={FastImage.resizeMode.contain}
-                />
-              )
+                ) : (
+                  <FastImage
+                    source={require('../assets/help.gif')}
+                    style={{ height: 40, width: 40 }}
+                    resizeMode={FastImage.resizeMode.contain}
+                  />
+                )
 
-              :
-              <SvgXml
-                xml={iconsvg3(focused ? '#5C469E' : '#797C88')}
-                width={30}
-                height={30}
-                viewBox="0 0 32 32"
-                color={color} // Pass the color prop
-              />)
-        }
-      }} />
+                :
+                <SvgXml
+                  xml={iconsvg3(focused ? '#5C469E' : '#797C88')}
+                  width={30}
+                  height={30}
+                  viewBox="0 0 32 32"
+                  color={color} // Pass the color prop
+                />)
+          }
+        }} />
 
-      <Tab.Screen name="ProfileScreen" component={ProfileScreen} options={{
-        headerShown: false,
-        headerTitle: ' ',
-        headerStyle: { backgroundColor: '#1F487C', height: 60 },
-        tabBarLabel: 'Profile',
-        tabBarLabelStyle: { fontWeight: '600', fontSize: 12, lineHeight: 15, color: '#FFF' },
-        tabBarIcon: ({ focused, color }) => {
-          return (
-            focused ?
-              Platform.OS === 'ios' ? (
-                <Image source={require('../assets/profile.gif')}
-                  resizeMode='contain'
-                  style={{ height: 40, width: 40 }} />
-              ) : (
-                <FastImage
-                  source={require('../assets/profile.gif')}
-                  style={{ height: 40, width: 40 }}
-                  resizeMode={FastImage.resizeMode.contain}
-                />
-              )
-              :
-              <SvgXml
-                xml={iconsvg4(focused ? '#5C469E' : '#797C88')}
-                width={30}
-                height={30}
-                viewBox="0 0 32 32"
-                color={color} // Pass the color prop
-              />)
-        }
-      }} />
+        <Tab.Screen name="ProfileScreen" component={ProfileScreen} options={{
+          headerShown: false,
+          headerTitle: ' ',
+          headerStyle: { backgroundColor: '#1F487C', height: 60 },
+          tabBarLabel: 'Profile',
+          tabBarLabelStyle: { fontWeight: '600', fontSize: 12, lineHeight: 15, color: '#FFF' },
+          tabBarIcon: ({ focused, color }) => {
+            return (
+              focused ?
+                Platform.OS === 'ios' ? (
+                  <Image source={require('../assets/profile.gif')}
+                    resizeMode='contain'
+                    style={{ height: 40, width: 40 }} />
+                ) : (
+                  <FastImage
+                    source={require('../assets/profile.gif')}
+                    style={{ height: 40, width: 40 }}
+                    resizeMode={FastImage.resizeMode.contain}
+                  />
+                )
+                :
+                <SvgXml
+                  xml={iconsvg4(focused ? '#5C469E' : '#797C88')}
+                  width={30}
+                  height={30}
+                  viewBox="0 0 32 32"
+                  color={color} // Pass the color prop
+                />)
+          }
+        }} />
 
-    </Tab.Navigator>
+      </Tab.Navigator>
+    </>
   );
 }
 

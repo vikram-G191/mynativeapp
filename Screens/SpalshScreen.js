@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useId } from 'react';
 import { StyleSheet, View, Image, TouchableOpacity, TextInput, Text, ImageBackground } from 'react-native';
 import backgroundImage from './assets/home_bg.png'; // Replace with your actual image path
 import BusList1 from './assets/BusList1'; // Import your BusList1 component
@@ -12,6 +12,8 @@ import PlaceIcon from './assets/PlaceIcon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList, ScrollView } from 'react-native-gesture-handler';
 import FlipaddressIcon from './assets/FlipaddressIcon';
+import { useFocusEffect } from '@react-navigation/native';
+import { getUserId } from './Utils/STorage';
 
 const data = [
   { id: '1', city1: 'Chennai', city2: 'Bangalore', distance: '232 KMS' },
@@ -28,16 +30,29 @@ const DATA = [
   { id: '5', image: require('./assets/SliderImg.png') },
 ];
 const SpalshScreen = ({ navigation }) => {
+
   const [location, setLocation] = useState('');
+
+  const [userId, setUserId] = useState()
+
+
+  useFocusEffect(
+    useCallback(() => {
+      getUserId().then((id) => {
+        setUserId(id);
+        console.log("id", id);
+      });
+    }, [])
+  );
 
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.navigate('BottomTabs');
-    }, 3000); // 3000 milliseconds = 3 seconds
+      userId?.length > 0 ? navigation.navigate('BottomTabs') : navigation.navigate('LoginScreen');
+    }, 500); // 3000 milliseconds = 3 seconds
 
     return () => clearTimeout(timer); // Cleanup the timer if the component unmounts
-  }, [navigation]);
+  }, [userId, navigation]);
 
   const renderItem = ({ item }) => (
     <View style={{ flex: 1 }}>

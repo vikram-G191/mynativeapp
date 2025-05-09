@@ -38,10 +38,11 @@ const TextField: React.FC<Props> = (props) => {
     }).start()
   }, [focusAnim, isFocused, value])
 
-  let color = isFocused ? '#1F487C' : '#1F487C'
-  if (errorText) {
-    color = '#B00020'
-  }
+  //let color = isFocused ? '#1F487C' : '#1F487C'
+  let color = '#1F487C';
+  // if (errorText) {
+  //   color = '#B00020'
+  // }
 
   return (
     <View style={style}>
@@ -79,7 +80,7 @@ const TextField: React.FC<Props> = (props) => {
                 {
                   translateY: focusAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [12, -12],
+                    outputRange: [12, -17],
                   }),
                 },
                 {
@@ -101,7 +102,7 @@ const TextField: React.FC<Props> = (props) => {
             ]}
           >
             {label}
-            {errorText ? '*' : ''}
+            {errorText ? '' : ''}
           </Text>
         </Animated.View>
       </TouchableWithoutFeedback>
@@ -112,16 +113,18 @@ const TextField: React.FC<Props> = (props) => {
 
 const styles = StyleSheet.create({
   input: {
+    position:"relative",
     padding: 12,
     borderWidth: 0.5,
     borderRadius: 5,
     fontFamily: 'Avenir-Medium',
     fontSize: 16,
+    color:'#1F487C'
   },
   labelContainer: {
     position: 'absolute',
     paddingHorizontal: 5,
-    backgroundColor: '#FFF'
+    backgroundColor: 'white'
   },
   label: {
     // fontFamily: 'Avenir-Heavy',
@@ -132,7 +135,8 @@ const styles = StyleSheet.create({
 
   },
   error: {
-    marginTop: 4,
+    position:"absolute",
+    marginTop: 53,
     marginLeft: 12,
     fontSize: 12,
     color: '#B00020',

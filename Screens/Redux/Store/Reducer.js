@@ -29,7 +29,14 @@ const initialState = {
   tbs_booking_details: [],
   get_buslist: [],
   filtered_operator: [],
-  ads_list: []
+  ads_list: [],
+  completed_booking: [],
+  upcomming_booking: [],
+  ticket_details: [],
+  top_route_list: [],
+  tbs_info: [],
+  current_theme: [],
+  cancelled_ticket: []
 };
 
 export const productReducer = (state = initialState, action) => {
@@ -105,7 +112,48 @@ export const productReducer = (state = initialState, action) => {
       };
     }
     case "ADS_LIST":
-      return { ...state, ads_list: payload }
+      return {
+        ...state,
+        ads_list: payload
+      }
+    case "COMPLETED_BOOKING":
+      return {
+        ...state,
+        completed_booking: payload
+      }
+    case "UPCOMMING_BOOKING":
+      return {
+        ...state,
+        upcomming_booking: payload
+      }
+    case "TICKET_DETAILS":
+      return {
+        ...state,
+        ticket_details: payload
+      }
+    case "TOP_ROUTE_LIST":
+      return {
+        ...state,
+        top_route_list: payload
+      }
+    case 'TBS_INFO': {
+      return {
+        ...state,
+        tbs_info: payload,
+      };
+    }
+    case "GET_CURRENT_THEME": {
+      return {
+        ...state,
+        current_theme: payload
+      }
+    }
+    case "CANCELLED_TICKET": {
+      return {
+        ...state,
+        cancelled_ticket: payload
+      }
+    }
 
     default:
       return state;

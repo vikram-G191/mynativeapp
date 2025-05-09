@@ -34,19 +34,30 @@ import RNFetchBlob from 'react-native-blob-util';
 import { downloadFile } from '../BookingScreen/DownloadFile';
 import Downloadicon1 from '../assets/Downloadicon1';
 import { BackgroundImage } from '@rneui/base';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 import RNFS, { stat } from 'react-native-fs';
 import { REACT_APP_API_URL } from "@env"
+import { Get_TBS_Booking_details } from '../API/TBSapi/DashBoard/Dashboard';
+import { downloadTicket } from '../API/TBSapi/MyAccount/Profile';
 
 const TravelerScreenDetailsSuccess = ({ props, navigation, route }) => {
 
-    const apiUrl = `https://thebusstand.com/api`
-    // const apiUrl = REACT_APP_API_URL
+    const dispatch = useDispatch()
+    // const values = {
+    //     ticketNumber: 'AY5731714692',
+    //     phone: '9688553316',
+    // };
+
+    // useEffect(() => {
+    //     Get_TBS_Booking_details(values, dispatch)
+    // }, [])
+    // const apiUrl = `http://www.thebusstand.com/api`
+    const apiUrl = process.env.REACT_APP_API_URL
 
     const tbs_booking_details = useSelector((state) => state?.productReducer?.tbs_booking_details)
     console.log(tbs_booking_details, "tbs_booking_details")
-    
+
     const { themecolor = '#1F487C' } = route.params || {};
     const { themecolor1 = '#1F487C' } = route.params || {};
     const { screenTheme = 'Normal Coach' } = route.params || {};
@@ -71,34 +82,34 @@ const TravelerScreenDetailsSuccess = ({ props, navigation, route }) => {
 
     const getCityAbbreviation = (cityName) => {
         if (!cityName) return "";
-     
+
         // Remove anything inside parentheses (e.g., "Tirupur (Avinashi)" → "Tirupur")
         cityName = cityName.replace(/\s*\(.*?\)\s*/g, "").trim();
-     
+
         const words = cityName.split(" ");
-     
+
         // If city has multiple words (e.g., "New Delhi" → "NDL")
         if (words.length > 1) {
-          return words
-            .map((word) => word.charAt(0))
-            .join("")
-            .toUpperCase();
+            return words
+                .map((word) => word.charAt(0))
+                .join("")
+                .toUpperCase();
         }
-     
+
         // If single-word city, take first + two consonants (e.g., "Vijayawada" → "VJA")
         const letters = cityName.toUpperCase().replace(/[^A-Z]/g, ""); // Remove non-alphabet chars
         const vowels = ["A", "E", "I", "O", "U"];
-     
+
         let abbreviation = letters.charAt(0); // First letter
         let consonants = letters
-          .split("")
-          .filter((letter) => !vowels.includes(letter));
-     
+            .split("")
+            .filter((letter) => !vowels.includes(letter));
+
         abbreviation += (consonants[1] || letters[1] || "").charAt(0); // Second letter
         abbreviation += (consonants[2] || letters[2] || "").charAt(0); // Third letter
-     
+
         return abbreviation;
-      };
+    };
 
     const onShare = async () => {
         try {
@@ -331,26 +342,7 @@ const TravelerScreenDetailsSuccess = ({ props, navigation, route }) => {
     };
 
     const handleDownloadClick = async (ticketid) => {
-        try {
-            const downloadUrl = `${apiUrl}/downloadticket/${ticketid}`;
-            const path = `${RNFS.DocumentDirectoryPath}/ticket_${ticketid}.pdf`; // Define where you want to store the file on the device
-
-            // Download the file
-            const downloadResult = await RNFS.downloadFile({
-                fromUrl: downloadUrl,
-                toFile: path,
-            }).promise;
-
-            // Handle success
-            if (downloadResult.statusCode === 200) {
-                Alert.alert('Download successful!', `Ticket saved to ${path}`);
-                // Optionally, open the file after download (e.g., using a PDF viewer or native app)
-            } else {
-                throw new Error('Download failed');
-            }
-        } catch (error) {
-            Alert.alert('Error', error.message || 'Failed to download the ticket');
-        }
+        downloadTicket(ticketid)
     };
 
 
@@ -479,7 +471,7 @@ const TravelerScreenDetailsSuccess = ({ props, navigation, route }) => {
 
 
                     <View style={{ flex: 1, flexDirection: 'column' }}>
-                        <Text style={{ fontSize: 25, fontWeight: '600', color: '#393939', alignSelf: 'center', marginTop: 20 }}>Ticket Booked Successfully !</Text>
+                        <Text style={{ fontSize: 25, fontWeight: '600', color: '#1F487C', alignSelf: 'center', marginTop: 20 }}>Ticket Booked Successfully !</Text>
                         <View style={{
                             height: 'auto',
                             borderTopLeftRadius: 10,
@@ -534,7 +526,7 @@ const TravelerScreenDetailsSuccess = ({ props, navigation, route }) => {
                                             </View>
                                         </View>
                                         <Text style={{ flex: 1, fontSize: 18, fontWeight: '400', color: themeheaderFontColor, alignSelf: 'center', }}>Ticket Number : {ticket_Details?.Ticket_no}</Text>
-                                        <Text style={{ flex: 1, fontSize: 18, fontWeight: '400', color: themeheaderFontColor, alignSelf: 'center', }}>PNR : {ticket_Details?.operator_pnr}</Text>
+                                        <Text style={{ flex: 1, fontSize: 18, fontWeight: '400', color: themeheaderFontColor, alignSelf: 'center', }}>PNR : {ticket_Details?.operator_pnr.length > 23 ? ticket_Details?.operator_pnr.slice(0, 23) : ticket_Details?.operator_pnr}</Text>
 
                                     </View>
                                 </BackgroundImage>
@@ -617,8 +609,8 @@ const TravelerScreenDetailsSuccess = ({ props, navigation, route }) => {
                                     </View>
                                     <View style={{ flexDirection: 'row', gap: 10, margin: 0, justifyContent: 'center' }}>
                                         <View style={{ flexDirection: 'column' }}>
-                                            <Text style={{ color: 'black', fontSize: 16, fontWeight: 400 }}>{ticket_Details?.Journey_Date.slice(5, 13)}</Text>
-                                            <Text style={{ color: 'black', fontSize: 16, fontWeight: 700 }}>{ticket_Details?.Board_Halt_Time}</Text>
+                                            <Text style={{ color: 'black', fontSize: 14, fontWeight: 400 }}>{ticket_Details?.Journey_Date.slice(5, 13)}</Text>
+                                            <Text style={{ color: 'black', fontSize: 14, fontWeight: 700 }}>{ticket_Details?.Board_Halt_Time}</Text>
 
                                         </View>
                                         <View style={{
@@ -628,13 +620,14 @@ const TravelerScreenDetailsSuccess = ({ props, navigation, route }) => {
                                         }}>
                                             <Image
                                                 source={require('../assets/BusArrowicone.png')}
-                                                style={{ width: 148, height: 35, tintColor: 'black' }}
+                                                style={{ width: 130, height: 31, tintColor: 'black' }}
                                             />
                                             <Text style={{
                                                 position: 'absolute',
                                                 color: 'white', // Adjust color as needed
                                                 fontSize: 12,
-                                                bottom: 20,
+                                                bottom: 16,
+                                                left: 49,
                                                 fontWeight: 'bold',
                                             }}>  {calculateDuration(
                                                 // moment(
@@ -649,8 +642,8 @@ const TravelerScreenDetailsSuccess = ({ props, navigation, route }) => {
                                             )}</Text>
                                         </View>
                                         <View style={{ flexDirection: 'column' }}>
-                                            <Text style={{ color: 'black', fontSize: 16, fontWeight: 400 }}>{ConvertDate(calculatedDate).slice(5, 13)}</Text>
-                                            <Text style={{ color: 'black', fontSize: 16, fontWeight: 700 }}>{ticket_Details?.Arr_Time
+                                            <Text style={{ color: 'black', fontSize: 14, fontWeight: 400 }}>{ConvertDate(calculatedDate).slice(5, 13)}</Text>
+                                            <Text style={{ color: 'black', fontSize: 14, fontWeight: 700 }}>{ticket_Details?.Arr_Time
                                                 ? convertTo12HourFormat(ticket_Details?.Arr_Time)
                                                 : null}
                                             </Text>
@@ -744,7 +737,7 @@ const TravelerScreenDetailsSuccess = ({ props, navigation, route }) => {
                                         </Svg>
                                     </View>
 
-                                    <View style={{ flexDirection: 'row', marginTop: 20, top: -25, alignItems: 'center', justifyContent: 'center' }}>
+                                    {/* <View style={{ flexDirection: 'row', marginTop: 20, top: -25, alignItems: 'center', justifyContent: 'center' }}>
 
 
                                         <Text style={{ fontSize: 16.76, lineHeight: 20.29, fontWeight: '400', color: 'black', alignSelf: 'center', }}>Scan this QR code to get on the bus</Text>
@@ -757,7 +750,27 @@ const TravelerScreenDetailsSuccess = ({ props, navigation, route }) => {
                                             source={require('../assets/QRIcone2.png')}
                                             style={{ width: 89, height: 86, bottom: 5, alignSelf: 'center' }}
                                         />
+                                    </View> */}
+
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        padding: 10,
+                                        justifyContent: 'flex-end',  // Added this line
+                                    }}>
+                                        <Text style={{
+                                            color: (screenTheme === 'Luxury Coach') ? '#393939' : themecolor,
+                                            fontWeight: 'bold'
+                                        }}>
+                                            Total Fare :
+                                        </Text>
+                                        <Text style={{
+                                            color: '#1F487C',
+                                            fontWeight: 'bold'
+                                        }}>
+                                            {tbs_booking_details?.total_fare ? tbs_booking_details?.total_fare : ticket_Details?.FareBreakup?.netFare}
+                                        </Text>
                                     </View>
+
                                 </View>
                             </View>
 
@@ -823,7 +836,19 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#E5FFF1',
-    }, circle: {
+    },
+    fareText: {
+        position: 'absolute',
+        left: 10,
+        top: 8,
+        fontWeight: '800',
+        fontSize: 5, // Adjust for mobile screen size
+        textAlign: 'center',
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: '#1F487C'
+    },
+    circle: {
         width: 40, // Diameter of the circle
         height: 41, // Diameter of the circle
         borderRadius: 50,

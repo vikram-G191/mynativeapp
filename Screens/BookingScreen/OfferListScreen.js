@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,15 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import { Svg} from 'react-native-svg';
+import {Svg} from 'react-native-svg';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {FlatList} from 'react-native-gesture-handler';
 
 import BackWhite from '../assets/BackWhite';
 import backgroundImage from '../assets/home_bg.png'; // Replace with your actual image path
+import {getOffersList} from '../Utils/STorage';
+import {GetDiscountOffers} from '../API/TBSapi/Home/Home';
+import {useFocusEffect} from '@react-navigation/native';
 
 const OfferListScreen = props => {
   const [data, setData] = useState([
@@ -26,16 +29,17 @@ const OfferListScreen = props => {
       title: 'Where can I check the cancellation policy?',
       content:
         'Guest Users must enter the Booking Id and corresponding Passenger Mobile number to cancel the booking. To cancel a booking made through a registered account, please log in and cancel the ticket.',
-    },  {
-        title: 'How to cancel my booking?',
-        content:
-          'Guest Users must enter the Booking Id and corresponding Passenger Mobile number to cancel the booking. To cancel a booking made through a registered account, please log in and cancel the ticket.',
-      },
-      {
-        title: 'Where can I check the cancellation policy?',
-        content:
-          'Guest Users must enter the Booking Id and corresponding Passenger Mobile number to cancel the booking. To cancel a booking made through a registered account, please log in and cancel the ticket.',
-      },
+    },
+    {
+      title: 'How to cancel my booking?',
+      content:
+        'Guest Users must enter the Booking Id and corresponding Passenger Mobile number to cancel the booking. To cancel a booking made through a registered account, please log in and cancel the ticket.',
+    },
+    {
+      title: 'Where can I check the cancellation policy?',
+      content:
+        'Guest Users must enter the Booking Id and corresponding Passenger Mobile number to cancel the booking. To cancel a booking made through a registered account, please log in and cancel the ticket.',
+    },
   ]);
 
   const categoryList = [
@@ -50,20 +54,21 @@ const OfferListScreen = props => {
   ];
 
   const [selectedId, setSelectedId] = useState('All');
+  const [offersList, setOffersList] = useState();
+  const apicrmimage = process.env.REACT_APP_CRM_API_URL_IMAGE;
 
-
+  console.log(offersList, 'offers_list');
   const handleItemClick = index => {
     setOpenItem(openItem === index ? null : index);
   };
 
-  const handleCategoryItemClick =  (itemId,index) => {
-
+  const handleCategoryItemClick = (itemId, index) => {
     if (selectedId === itemId) {
-        // If the same item is clicked again, deselect it
-        setSelectedId(null);
-      } else {
-        setSelectedId(itemId);
-      }
+      // If the same item is clicked again, deselect it
+      setSelectedId(null);
+    } else {
+      setSelectedId(itemId);
+    }
 
     console.log('clicked ' + index);
   };
@@ -73,49 +78,114 @@ const OfferListScreen = props => {
 
     return (
       <TouchableOpacity
-        style={[{
-            flex:1,
-          margin: 2,
-          padding:3,
-          borderColor: 'rgba(31, 72, 124, 0.4)',
-          alignItems: 'center',
-          justifyContent:'center',
-          borderWidth: 1,
-          borderRadius: 5,
-          backgroundColor:'#FFFFFF'
-        }, isSelected && {backgroundColor:'#1F487C'}]}
-        onPress={() => handleCategoryItemClick(item.title,index)}>
+        style={[
+          {
+            flex: 1,
+            margin: 2,
+            padding: 3,
+            borderColor: 'rgba(31, 72, 124, 0.4)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderRadius: 5,
+            backgroundColor: '#FFFFFF',
+          },
+          isSelected && {backgroundColor: '#1F487C'},
+        ]}
+        onPress={() => handleCategoryItemClick(item.title, index)}>
         <Text
-          style={[{
-            fontFamily: 'Inter',
-            textAlign: 'center',
-            color: '#1F487C',
-            fontSize: 11,
-            fontWeight: '300',
-            lineHeight: 12,
-          },isSelected && {color:'#FFFFFF', fontSize: 12,
-            fontWeight: '600',
-            lineHeight: 15,}]}>
+          style={[
+            {
+              fontFamily: 'Inter',
+              textAlign: 'center',
+              color: '#1F487C',
+              fontSize: 11,
+              fontWeight: '300',
+              lineHeight: 12,
+            },
+            isSelected && {
+              color: '#FFFFFF',
+              fontSize: 12,
+              fontWeight: '600',
+              lineHeight: 15,
+            },
+          ]}>
           {item.title}
         </Text>
       </TouchableOpacity>
     );
   };
-  const renderListItem = ({item, index}) => {
+  const renderListItem = ({item}) => {
+    const imageUrl = item?.theme
+      ? `${apicrmimage}${item.theme}`
+      : `${apicrmimage}${item.background_image}`;
+
     return (
-        <TouchableOpacity
-          style={{flex:1,borderRadius:10,overflow:'hidden', height: 150,margin:8
-          }}
-          >
-            <View style={{flex:1}}>
-            <Image
-              source={require('../assets/SliderImg.png')}
-              style={{width: '100%', height: 150, resizeMode: 'cover'}}
-            />           
-             </View>    
-        </TouchableOpacity>
+      <TouchableOpacity
+        style={{
+          flex: 1,
+          borderRadius: 10,
+          overflow: 'hidden',
+          height: 150,
+          margin: 8,
+        }}>
+        <View style={{flex: 1, position: 'relative'}}>
+          <Image
+            alt="background_image"
+            source={{uri: imageUrl}}
+            style={{width: '100%', height: 150, resizeMode: 'contain'}}
+          />
+
+          <View style={styles.spanStyle1}>
+            <View
+              style={{
+                backgroundColor: '#E5FFF1',
+                borderWidth: 0,
+                width: 25,
+                height: 25,
+                borderRadius: 50,
+                marginBottom: 0,
+              }}></View>
+          </View>
+
+          <View style={styles.spanStyle2}>
+            <View
+              style={{
+                backgroundColor: '#E5FFF1',
+                borderWidth: 0,
+                width: 25,
+                height: 25,
+                borderRadius: 50,
+                marginTop: 0,
+              }}></View>
+          </View>
+        </View>
+      </TouchableOpacity>
     );
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchAndUpdateOffers = async () => {
+        await GetDiscountOffers(); // fetch from API and store
+        const offers = await getOffersList(); // get from AsyncStorage
+        setOffersList(offers);
+      };
+
+      fetchAndUpdateOffers();
+    }, []),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchOffersDetails = async () => {
+        const offers = await getOffersList();
+        setOffersList(offers);
+      };
+
+      fetchOffersDetails();
+    }, []),
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['right', 'left', 'top']}>
@@ -144,8 +214,16 @@ const OfferListScreen = props => {
         <View style={styles.tripInfoview}>
           <ImageBackground
             source={backgroundImage}
-            style={{flex: 1,flexDirection:'column',resizeMode: 'cover', height: '100%', padding: 10}}>
-            <View>
+            style={{
+              flex: 1,
+              marginLeft: 5,
+              flexDirection: 'column',
+              resizeMode: 'cover',
+              height: '100%',
+              width: '98%',
+              padding: 10,
+            }}>
+            {/* <View>
             <FlatList
               data={categoryList}
               numColumns={4}
@@ -155,13 +233,14 @@ const OfferListScreen = props => {
               extraData={selectedId}
 
             />
-            </View>
-            <View style={{flex:1,marginTop:8}}>
-             <FlatList
-              data={data}
-              renderItem={renderListItem}
-              keyExtractor={(item, index) => index}
-            />
+            </View> */}
+            <View style={{flex: 1, marginTop: 8}}>
+              <FlatList
+                data={offersList}
+                renderItem={renderListItem}
+                keyExtractor={(item, index) => index.toString()}
+                showsVerticalScrollIndicator={false}
+              />
             </View>
           </ImageBackground>
         </View>
@@ -207,7 +286,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0)',
-    marginRight:30,
+    marginRight: 30,
   },
   topTitle: {
     fontSize: 18,
@@ -244,6 +323,18 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontFamily: 'Inter',
     fontStyle: 'normal',
+  },
+  spanStyle1: {
+    position: 'absolute',
+    left: 115,
+    top: -15,
+    zIndex: 2,
+  },
+  spanStyle2: {
+    position: 'absolute',
+    left: 115,
+    bottom: -15,
+    zIndex: 2,
   },
 });
 export default OfferListScreen;

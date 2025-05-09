@@ -9,7 +9,7 @@ const iconsvg = `
 
 `;
 
-const TicketLine = ({ width = '100%', height = '100%' }) => {
+const TicketLine = ({ width, height }) => {
   return <SvgXml xml={iconsvg} width={width} height={height} />;
 };
 

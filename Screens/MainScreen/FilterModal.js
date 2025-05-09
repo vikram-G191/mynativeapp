@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
-    fontSize: 16,
+    fontSize: 17,
   },
   activeMenuItem: {
     backgroundColor: '#1f487e',
