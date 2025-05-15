@@ -603,6 +603,8 @@ const ViewMoreScreen = ({
                         padding: 10,
                       }}>
                       Boarding Point
+
+                      
                     </Text>
                     <View
                       style={{
