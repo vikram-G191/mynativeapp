@@ -120,7 +120,8 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
   const useThemeColor = route.params.themecolor;
 
   const screenHeight = Dimensions.get('window').height;
-  const contentHeight = screenHeight * 0.65; // 50% of screen height
+  const contentHeight = screenHeight * 0.68; // 50% of screen height
+  const contentHeight2 = screenHeight * 0.64;
 
   const [showBottomModal, setShowBottomModal] = useState(false);
   const slideAnim = useRef(
@@ -137,12 +138,13 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
   };
 
   const closeBottomModal = () => {
+    setShowBottomModal(false);
+    // Now animate modal close
     Animated.timing(slideAnim, {
       toValue: Dimensions.get('window').height,
       duration: 300,
       useNativeDriver: true,
     }).start(() => {
-      setShowBottomModal(false);
       setSelectedButton(null);
     });
   };
@@ -226,7 +228,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
   });
 
   const [selectedSeat, setSelectedSeat] = useState([]); // Use an array for multiple selections
-
+  const scrollViewRef = useRef(null);
   console.log(selectedSeat, 'selected_Seat');
   const formatTravelTime = timeStr => {
     if (!timeStr) return '';
@@ -326,7 +328,60 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
     fetchSeatLayout();
   }, []);
 
-  const formatSeatData = seatList => {
+  const formatSeatData1 = seatList => {
+    return seatList?.map(seat => {
+      const [
+        seatNumber,
+        column,
+        row,
+        type,
+        isBooked,
+        gender,
+        price,
+        seatTypeID,
+        tax,
+        childFare,
+        category,
+        weight,
+      ] = seat.split(', ');
+
+      // Safely parse tax as a number, default to 0 if invalid
+      const parsedTax = isNaN(tax) ? 0 : Number(tax);
+
+      return {
+        // seatNumber,
+        // row: Number(column), // Swap row and column for rotation
+        // column: Number(row),
+        // type,
+        // isBooked: isBooked === 'N',
+        // gender,
+        // price: Number(price),
+        // seatTypeID: seatTypeID,
+        // tax: parsedTax,
+        // childFare: Number(childFare),
+        // category,
+        // weight: Number(weight),
+
+ 
+        seatNumber,
+        column: parseInt(column, 10),
+        row: parseInt(row, 10), 
+        type,
+        isBooked: isBooked === 'N',
+        gender,
+        price: Number(price),
+        seatTypeID: seatTypeID,
+        tax: parsedTax,
+        childFare: Number(childFare),
+        category,
+        weight: Number(weight),
+
+
+      };
+    });
+  };
+
+   const formatSeatData = seatList => {
     return seatList?.map(seat => {
       const [
         seatNumber,
@@ -359,20 +414,36 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
         childFare: Number(childFare),
         category,
         weight: Number(weight),
+
+ 
+        // seatNumber,
+        // column: parseInt(column, 10),
+        // row: parseInt(row, 10), 
+        // type,
+        // isBooked: isBooked === 'N',
+        // gender,
+        // price: Number(price),
+        // seatTypeID: seatTypeID,
+        // tax: parsedTax,
+        // childFare: Number(childFare),
+        // category,
+        // weight: Number(weight),
+
+
       };
     });
   };
 
-  console.log(screenTheme, 'screenTheme');
+  console.log(upper_list_rows1, 'screenTheme');
 
   // Format seat data
-  const lowerDeckSeats = formatSeatData(
+  const lowerDeckSeats = formatSeatData1(
     seatLayout?.TotalSeatList?.lowerdeck_seat_nos || [],
   );
-  const upperDeckSeats = formatSeatData(
+  const upperDeckSeats = formatSeatData1(
     seatLayout?.TotalSeatList?.upperdeck_seat_nos || [],
   );
-  // console.log(lowerDeckSeats, 'seating_layout');
+  console.log(lowerDeckSeats, 'seating_layout');
 
   const Formatting = date => {
     const formattedDate = new Date(date);
@@ -383,23 +454,23 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
     // console.log(travel_date); // Output: "13 Mar"
     return travel_date;
   };
-  const handleSeatLeftColor = (item) => {
+  const handleSeatLeftColor = item => {
     const seats = Number(item.available_seats);
 
     if (seats >= 0 && seats < 10) {
       return {
-        bg: "#FFC1C180",
-        text: "#C62B2B",
+        bg: '#FFC1C180',
+        text: '#C62B2B',
       };
     } else if (seats >= 10 && seats < 30) {
       return {
-        bg: "#f9e5c9",
-        text: "#ce7a00",
+        bg: '#f9e5c9',
+        text: '#ce7a00',
       };
     } else {
       return {
-        bg: "#dbefdc",
-        text: "#229e37",
+        bg: '#dbefdc',
+        text: '#229e37',
       };
     }
   };
@@ -821,7 +892,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
             <Text
               style={{
                 marginTop: -20,
-                color: screenTheme === 'Luxury Coach' ? "#393939" : '#1F487C',
+                color: screenTheme === 'Luxury Coach' ? '#393939' : '#1F487C',
                 fontWeight: '600',
                 fontFamily: 'Inter',
                 fontSize: 12,
@@ -837,8 +908,12 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 height: 24,
                 borderRadius: 12,
               }}>
-              <Svg style={{ width: 14, height: 14, margin: 5 }}>
-                <SeatRed width="90%" height="90%" color={handleSeatLeftColor(item).text} />
+              <Svg style={{width: 14, height: 14, margin: 5}}>
+                <SeatRed
+                  width="90%"
+                  height="90%"
+                  color={handleSeatLeftColor(item).text}
+                />
               </Svg>
               <Text
                 style={{
@@ -863,7 +938,6 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               9 Window Seats
             </Text> */}
           </View>
-
         </View>
         {seatLayout ? (
           <View
@@ -876,7 +950,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               borderBottomLeftRadius: 15,
               borderWidth: 1,
               flex: 1,
-              width:'100%',
+              width: '100%',
               backgroundColor:
                 screenTheme === 'Luxury Coach' ? '#FFEEC9' : '#EEEDED',
             }}>
@@ -894,25 +968,24 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 left: 0,
                 flexDirection: 'row',
                 shadowColor: 'rgb(0, 0, 0)',
-                shadowOffset: {width: 0, height: 6},
-                shadowOpacity: 1,
+                shadowOffset: {width: 0, height: 3},
+                shadowOpacity: 10,
                 shadowRadius: 1,
-                elevation: 4,
+                elevation: 10,
               }}>
               <View
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'flex-start',
-                  height: 33,
-                  width: '98%',
+                  height: '100%',
+                  width: '100%',
                   overflow: 'hidden',
                   position: 'relative',
                 }}>
                 <View
                   style={{
-                    height: 30,
-                    borderRadius: 5,
+                    height: '100%',
                     overflow: 'hidden',
                   }}>
                   <FlatList
@@ -921,11 +994,12 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={item => item}
                     contentContainerStyle={{
-                      borderRadius: 5,
                       overflow: 'hidden',
+                      width: '99%',
+                      height: '100%',
                     }}
                     renderItem={({item, index}) => (
-                      <View style={[styles.ViewTabs, {width: '98%'}]}>
+                      <View style={[styles.ViewTabs, {width: '100%'}]}>
                         <View
                           style={{
                             flex: 1,
@@ -933,12 +1007,9 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                             // alignItems: 'center',
                             // justifyContent: 'flex-start',
                           }}>
-                          <Svg style={{width: 15, height: 21, margin: 5}}>
-                            <SeatBtnIcon
-                              width="100%"
-                              height="100%"
-                              color="#E92E3D"
-                            />
+                          <Svg
+                            style={{width: '12%', height: '45%', margin: '3%'}}>
+                            <SeatBtnIcon width="100%" color="#E92E3D" />
                           </Svg>
                           <TouchableOpacity
                             style={[
@@ -952,15 +1023,21 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                             }>
                             <Text
                               style={[
-                                styles.tabTitle,
+                                {
+                                  fontSize: 14,
+                                  fontWeight: '200',
+                                  color: '#FFFFFFCC',
+                                  fontFamily: 'Inter',
+                                  fontStyle: 'normal',
+                                  marginBottom: '4%',
+                                },
                                 selectSeatScreen === 'SelectSeat' && {
-                                  fontSize: 15,
+                                  fontSize: 14, // This is redundant if the same
                                   fontWeight: '700',
                                   color: '#FFFFFF',
                                   fontFamily: 'Inter',
                                   fontStyle: 'normal',
-                                  marginBottom: '10%',
-                                  paddingHorizontal: 5,
+                                  marginBottom: '3%',
                                 },
                               ]}>
                               {'Select your Seats'}
@@ -971,7 +1048,6 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                           style={{
                             flex: 1,
                             flexDirection: 'row',
-                            marginLeft: 20,
                             // alignItems: 'center',
                             // justifyContent: 'center',
                           }}>
@@ -981,6 +1057,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                               height: 17,
                               marginHorizontal: 5,
                               marginVertical: '3%',
+                              marginLeft: '-4%',
                             }}>
                             <BoadingBtnIcon
                               width="100%"
@@ -1013,7 +1090,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                                   color: '#FFFFFFCC',
                                   fontFamily: 'Inter',
                                   fontStyle: 'normal',
-                                  marginBottom: '8%',
+                                  marginBottom: '4%',
                                 },
                                 selectSeatScreen === 'BoardingPoint' && {
                                   // Any overrides or additional styles
@@ -1022,7 +1099,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                                   color: '#FFFFFF',
                                   fontFamily: 'Inter',
                                   fontStyle: 'normal',
-                                  marginBottom: '5%',
+                                  marginBottom: '4%',
                                 },
                               ]}>
                               {'Boarding & Drop Point'}
@@ -1186,13 +1263,13 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 </TouchableOpacity>
               </View>
             </View> */}
-            <View style={{flex: 1, width: '100%', height:'40%'}}>
+            <View style={{flex: 1, width: '100%', height: '40%'}}>
               {selectSeatScreen === 'SelectSeat' ? (
                 <View style={{height: contentHeight}}>
                   <BookBusSeatView BusSeatsData={null} />
                 </View>
               ) : (
-                <View style={{height: contentHeight}}>
+                <View style={{overflow: 'hidden', height: contentHeight2}}>
                   <BoardingDropPointView BusBoardingData={null} />
                 </View>
               )}
@@ -1346,7 +1423,11 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
         rows[seat.row - 1].seats[1] = seat; // Column 2 in the second position
       } else if (seat.column === 1) {
         rows[seat.row - 1].seats[2] = seat; // Column 1 in the third position
-      } else {
+      }
+       else if (seat.column === 3) {
+        rows[seat.row - 1].seats[3] = seat;
+       }
+       else {
         // console.log(`Unexpected column ${seat.column} for seat ${seat.seatNumber}`);
       }
     });
@@ -1364,6 +1445,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
 
     // Grouping seats by row and column
     upperDeckSeats.forEach(seat => {
+      console.log(seat.column, 'seat.column');
       // Ensure that the row exists
       if (!rows[seat.row - 1]) {
         rows[seat.row - 1] = {
@@ -1373,7 +1455,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
       }
 
       // Place seats in their respective columns (C5, C2, C1)
-      if (seat.column === 5 || seat.column === 4) {
+      if (seat.column === 5 || seat.column === 6 || seat.column === 4) {
         rows[seat.row - 1].seats[0] = seat; // Column 5 in the first position
       }
       // if (seat.column === 2) {
@@ -1396,13 +1478,12 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
 
   const renderUpperSeat = (seat, index) => {
     if (!seat) return null; // If the seat is undefined (empty spot), do nothing
-
     const isSelected = selectedSeats.some(
       s => s.seatNumber === seat.seatNumber,
     );
-
+    console.log(seat, 'column');
     return (
-      <View key={index} style={{marginHorizontal: 5, marginVertical: 8}}>
+      <View key={index} style={{marginHorizontal: 3, marginVertical: '20%'}}>
         <TouchableOpacity
           style={[
             {flexDirection: 'row', justifyContent: 'center'},
@@ -1462,13 +1543,12 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
   const validHeight =
     !isNaN(calculatedUpperHeight) && calculatedUpperHeight > 0
       ? calculatedUpperHeight
-      : 100; // Default to 100 if invalid
+      : '100%'; // Default to 100 if invalid
 
   // -----------------------------------------------------------------------------------LowerBerth----------------------------------------
 
   const lower_count = lowerDeckSeats?.length;
-
-  const LowerBerthArrangement = () => {
+ const LowerBerthArrangement = () => {
     const rows = [];
 
     // Grouping seats by row and column
@@ -1501,7 +1581,74 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
 
     return filteredRows;
   };
+  // const LowerBerthArrangement = () => {
+  //   const rows = [];
 
+  //   // Grouping seats by row and column
+  //   lowerDeckSeats.forEach(seat => {
+  //     // Ensure that the row exists
+  //     if (!rows[seat.row - 1]) {
+  //       rows[seat.row - 1] = {
+  //         row: seat.row,
+  //         seats: [undefined, undefined, undefined], // C5, C2, C1 (indexed positions)
+  //       };
+  //     }
+
+  //     // Place seats in their respective columns (C5, C2, C1)
+  //     // if (seat.column === 5 || seat.column === 4) {
+  //     //   rows[seat.row - 1].seats[0] = seat; // Column 5 in the first position
+  //     // } else
+  //     if (seat.column === 2) {
+  //       rows[seat.row - 1].seats[1] = seat; // Column 2 in the second position
+  //     } else if (seat.column === 1) {
+  //       rows[seat.row - 1].seats[2] = seat; // Column 1 in the third position
+  //     } else {
+  //       // console.log(`Unexpected column ${seat.column} for seat ${seat.seatNumber}`);
+  //     }
+  //   });
+
+  //   // Remove rows that have no seats (all columns are undefined)
+  //   const filteredRows = rows.filter(row =>
+  //     row.seats.some(seat => seat !== undefined),
+  //   );
+
+  //   return filteredRows;
+  // };
+
+  // const LowerBerthArrangement1 = () => {
+  //   const rows = [];
+
+  //   // Grouping seats by row and column
+  //   lowerDeckSeats.forEach(seat => {
+  //     // Ensure that the row exists
+  //     if (!rows[seat.row - 1]) {
+  //       rows[seat.row - 1] = {
+  //         row: seat.row,
+  //         seats: [undefined, undefined, undefined], // C5, C2, C1 (indexed positions)
+  //       };
+  //     }
+
+  //     // Place seats in their respective columns (C5, C2, C1)
+  //     if (seat.column === 5 || seat.column === 4) {
+  //       rows[seat.row - 1].seats[0] = seat; // Column 5 in the first position
+  //     }
+  //     // else if (seat.column === 2) {
+  //     //   rows[seat.row - 1].seats[1] = seat; // Column 2 in the second position
+  //     // } else if (seat.column === 1) {
+  //     //   rows[seat.row - 1].seats[2] = seat; // Column 1 in the third position
+  //     // }
+  //     else {
+  //       // console.log(`Unexpected column ${seat.column} for seat ${seat.seatNumber}`);
+  //     }
+  //   });
+
+  //   // Remove rows that have no seats (all columns are undefined)
+  //   const filteredRows = rows.filter(row =>
+  //     row.seats.some(seat => seat !== undefined),
+  //   );
+
+  //   return filteredRows;
+  // };
   const LowerBerthArrangement1 = () => {
     const rows = [];
 
@@ -1511,19 +1658,31 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
       if (!rows[seat.row - 1]) {
         rows[seat.row - 1] = {
           row: seat.row,
-          seats: [undefined, undefined, undefined], // C5, C2, C1 (indexed positions)
+          seats: [], // C5, C2, C1 (indexed positions)
         };
       }
 
       // Place seats in their respective columns (C5, C2, C1)
-      if (seat.column === 5 || seat.column === 4) {
-        rows[seat.row - 1].seats[0] = seat; // Column 5 in the first position
-      }
-      // else if (seat.column === 2) {
-      //   rows[seat.row - 1].seats[1] = seat; // Column 2 in the second position
-      // } else if (seat.column === 1) {
-      //   rows[seat.row - 1].seats[2] = seat; // Column 1 in the third position
+      // if (seat.column === 5 || seat.column === 4) {
+      //   rows[seat.row - 1].seats[0] = seat; // Column 5 in the first position
       // }
+       if (seat.column === 6) {
+        rows[seat.row - 1].seats[0] = seat; // Column 2 in the second position
+      }
+      else if (seat.column === 5) {
+        rows[seat.row - 1].seats[1] = seat; // Column 2 in the second position
+      }
+       else if (seat.column === 4) {
+        rows[seat.row - 1].seats[2] = seat; // Column 1 in the third position
+      }
+      else if (seat.column === 3){
+        if(lowerDeckSeats.length > 34){
+          rows[seat.row - 1].seats[3] = seat
+        }
+        else{
+          rows[seat.row - 1].seats[3] = seat
+        }
+      }
       else {
         // console.log(`Unexpected column ${seat.column} for seat ${seat.seatNumber}`);
       }
@@ -1533,6 +1692,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
     const filteredRows = rows.filter(row =>
       row.seats.some(seat => seat !== undefined),
     );
+console.log(rows,"rowsrowsrows");
 
     return filteredRows;
   };
@@ -1544,10 +1704,11 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
       s => s.seatNumber === seat.seatNumber,
     );
 
+    console.log(seat,"lowerseatssss");
+    
+
     return (
-      <View
-        key={index}
-        style={{marginHorizontal: 5, marginVertical: '20%', borderRadius: 20}}>
+      <View key={index} style={{marginHorizontal: 3, marginVertical: '20%'}}>
         <TouchableOpacity
           style={[
             {flexDirection: 'row', justifyContent: 'center'},
@@ -1556,52 +1717,51 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
           onPress={() => handleSeatSelection(seat, index)}
           disabled={seat.isBooked}>
           <Svg style={{width: 30, height: seat.type === 'SS' ? 30 : 77}}>
-            {seat.type === 'SS' ? (
+            {seat.type === 'SS'  ? (
               <>
-              <BusSeater
-                width="100%"
-                height="100%"
-                bottomColor={getSeatBottomColor(seat, index)}
-                fillColor={getSeatFillColor(seat, index)}
-                strokeColor={getSeatColor(seat, index)}
-              />
-              <Text
-              style={{
-                color: 'white',
-                fontWeight: 'bold',
-                fontSize: 8,
-                textAlign: 'center',
-                justifyContent: 'center',
-                marginTop: '-39%',
-              }}>
-              {seat?.price > 0 ? `₹${seat?.price}` : ''}
-            </Text>
-            </>
+                <BusSeater
+                  width="100%"
+                  height="100%"
+                  bottomColor={getSeatBottomColor(seat, index)}
+                  fillColor={getSeatFillColor(seat, index)}
+                  strokeColor={getSeatColor(seat, index)}
+                />
+                <Text
+                  style={{
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: 8,
+                    textAlign: 'center',
+                    justifyContent: 'center',
+                    marginTop: '-39%',
+                  }}>
+                  {seat?.price > 0 ? `₹${seat?.price}` : ''}
+                </Text>
+              </>
             ) : (
               <>
-              <SleeperSeat
-                width="100%"
-                height="100%"
-                borderBottomColor={getSeatBorderBottomColor(seat, index)}
-                borderColor={getSeatBorderColor(seat, index)}
-                bottomColor={getSeatBottomColor(seat, index)}
-                fillColor={getSeatFillColor(seat, index)}
-                strokeColor={getSleeperColor(seat, index)}
-              />
-               <Text
-              style={{
-                color: 'white',
-                fontWeight: 'bold',
-                fontSize: 8,
-                textAlign: 'center',
-                justifyContent: 'center',
-                marginTop: '-42%',
-              }}>
-              {seat?.price > 0 ? `₹${seat?.price}` : ''}
-            </Text>
-            </>
+                <SleeperSeat
+                  width="100%"
+                  height="100%"
+                  borderBottomColor={getSeatBorderBottomColor(seat, index)}
+                  borderColor={getSeatBorderColor(seat, index)}
+                  bottomColor={getSeatBottomColor(seat, index)}
+                  fillColor={getSeatFillColor(seat, index)}
+                  strokeColor={getSleeperColor(seat, index)}
+                />
+                <Text
+                  style={{
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: 8,
+                    textAlign: 'center',
+                    justifyContent: 'center',
+                    marginTop: '-42%',
+                  }}>
+                  {seat?.price > 0 ? `₹${seat?.price}` : ''}
+                </Text>
+              </>
             )}
-            
           </Svg>
         </TouchableOpacity>
       </View>
@@ -1611,6 +1771,160 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
   // Running the arrangement logic based on dynamic data
   const Lower_list_rows = LowerBerthArrangement(); // Grouping seats by row and column
   const Lower_list_rows1 = LowerBerthArrangement1();
+// console.log(lowerDeckSeats.length,"lisisisisisisisis");
+// console.log(Lower_list_rows1.map((row)=> row.seats),"mappdedseatsssss");
+
+//  const maxRow = lowerDeckSeats.reduce((m, s) => Math.max(m, s.row), 0);
+//   const maxCol = lowerDeckSeats.reduce((m, s) => Math.max(m, s.column), 0);
+
+//     const rows = Array.from({ length: maxRow }, (_, i) =>
+//     lowerDeckSeats.filter(s => s.row === i + 1)
+//   );
+
+//   const seatWidth = 40;
+//   const seatHeight = 45;
+//   const totalCols = Math.max(...lowerDeckSeats.map(s => s.column));
+//   const totalRows = Math.max(...lowerDeckSeats.map(s => s.row));
+//   const containerHeight = (totalRows + 1) * seatHeight;
+//   const containerWidth = (totalCols + 1) * seatWidth;
+
+
+//   const layout = lowerDeckSeats.map(seat => {
+//   return {
+//     ...seat,
+//     top: (seat.row - 1) * seatHeight,
+//     left: (totalCols - seat.column) * seatWidth, // <-- Flip left-to-right
+//     height: seat.type === 'SS' ? seatHeight : seatHeight * 2 ,
+//   };
+// });
+
+
+const renderDeckSeats = (lowerDeckSeats) => {
+  const seatWidth = 40;
+  const seatHeight = 45;
+
+ const allCols = [...new Set(lowerDeckSeats.map(s => s.column))].sort((a, b) => a - b);
+ const colMap = {};
+  let displayCol = 0;
+  for (let i = 0; i < allCols.length; i++) {
+    const curr = allCols[i];
+    const prev = allCols[i - 1];
+    if (i > 0 && curr - prev > 1) {
+      displayCol += 1; // Only one space for a gap
+    }
+    colMap[curr] = displayCol;
+    displayCol += 1;
+  }
+
+const totalCompressedCols = displayCol;
+
+  const totalCols = Math.max(...lowerDeckSeats.map(s => s.column));
+  const totalRows = Math.max(...lowerDeckSeats.map(s => s.row));
+  // const layout = lowerDeckSeats.map(seat => ({
+  //   ...seat,
+  //   top: (seat.row - 1) * seatHeight,
+  //   left: (totalCols - seat.column) * seatWidth, // Flip left-to-right
+  //   height: seat.type === 'SS' ? seatHeight : seatHeight * 2,
+  // }));
+  const layout = lowerDeckSeats.map(seat => {
+    const compressedCol = colMap[seat.column];
+    const flippedCol = totalCompressedCols - 1 - compressedCol;
+
+    return {
+      ...seat,
+      top: (seat.row - 1) * seatHeight,
+      left: flippedCol * seatWidth,
+      height: seat.type === 'SS' ? seatHeight : seatHeight * 2,
+    };
+  });
+
+  const containerHeight = (totalRows + 1) * seatHeight;
+  const containerWidth = (totalCols + 1) * seatWidth;
+
+  return (
+    <ScrollView  contentContainerStyle={{ flexGrow: 1 }}>
+      <View style={{ width: containerWidth -30, height: containerHeight, position: 'relative', marginTop: 5 }}>
+        {layout.map((seat, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              { flexDirection: 'row', justifyContent: 'center' },
+              seat.isBooked && { opacity: 0.5 },
+            ]}
+            onPress={() => handleSeatSelection(seat, index)}
+            disabled={seat.isBooked}
+          >
+            <Svg
+              style={{
+                width: seatWidth - 8,
+                height: seat.height - 8,
+                position: 'absolute',
+                top: seat.top,
+                left: seat.left,
+                backgroundColor: '#e0f7ff',
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: 1,
+                margin: 4,
+              }}
+            >
+              {seat.type === 'SS' ? (
+                <>
+                  <BusSeater
+                    width="100%"
+                    height="100%"
+                    bottomColor={getSeatBottomColor(seat, index)}
+                    fillColor={getSeatFillColor(seat, index)}
+                    strokeColor={getSeatColor(seat, index)}
+                  />
+                  <Text
+                    style={{
+                      color: 'white',
+                      fontWeight: 'bold',
+                      fontSize: 8,
+                      textAlign: 'center',
+                      justifyContent: 'center',
+                      marginTop: '-39%',
+                      paddingLeft: '20%',
+                    }}
+                  >
+                    {seat?.price > 0 ? `₹${seat?.price}` : ''}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <SleeperSeat
+                    width="100%"
+                    height="100%"
+                    borderBottomColor={getSeatBorderBottomColor(seat, index)}
+                    borderColor={getSeatBorderColor(seat, index)}
+                    bottomColor={getSeatBottomColor(seat, index)}
+                    fillColor={getSeatFillColor(seat, index)}
+                    strokeColor={getSleeperColor(seat, index)}
+                  />
+                  <Text
+                    style={{
+                      color: 'white',
+                      fontWeight: 'bold',
+                      fontSize: 8,
+                      textAlign: 'center',
+                      justifyContent: 'center',
+                      marginTop: '-42%',
+                      paddingLeft: '20%',
+                    }}
+                  >
+                    {seat?.price > 0 ? `₹${seat?.price}` : ''}
+                  </Text>
+                </>
+              )}
+            </Svg>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </ScrollView>
+  );
+};
+
 
   const BookBusSeatView = ({BusSeatsData}) => {
     return (
@@ -1619,26 +1933,29 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
           style={{
             flex: 1,
             flexDirection: 'row',
-            paddingHorizontal: 10,
+            paddingHorizontal: '2%',
             gap: 10,
             marginTop: 20,
-            marginBottom: showBottomModal ? '45%' : '30%',
+            marginBottom: showBottomModal ? '41%' : '25%',
+            justifyContent:"center"
           }}>
           <View
             style={{
               height: '100%',
-              flex: 1.05,
+              // width: upperDeckSeats?.length > 0 ? '50%' :'auto',
+              // flex: 1.05,
+               flex: upperDeckSeats?.length > 0 ? 1.05 : null,
               borderColor:
                 screenTheme === 'Luxury Coach' ? '#D89E2F' : useThemeColor,
               borderWidth: 0.9,
               borderRadius: 20,
               backgroundColor: '#FFFFFF',
             }}>
-            <View style={{height: 40}}>
+            <View style={{height: '7%'}}>
               <View
                 style={{
                   width: '100%',
-                  height: 8,
+                  height: '3%',
                   flexDirection: 'row',
                   justifyContent: 'space-around',
                   position: 'absolute',
@@ -1666,7 +1983,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               <Text
                 style={{
                   fontWeight: '400',
-                  marginTop: 5,
+                  marginTop: '3%',
                   color: '#393939',
                   fontFamily: 'Inter',
                   fontSize: 10,
@@ -1678,18 +1995,18 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               <Image
                 source={require('../assets/stearing.png')}
                 style={{
-                  width: 18,
-                  height: 18,
+                  width: 20,
+                  height: 20,
                   alignSelf: 'flex-end',
-                  marginTop: -5,
+                  marginTop: '-4%',
                   marginRight: 12,
                 }}
               />
               <View
                 style={{
                   width: 15,
-                  height: 22,
-                  marginTop: -8,
+                  height: '50%',
+                  marginTop: '-5%',
                   backgroundColor:
                     screenTheme === 'Luxury Coach' ? '#FFEEC9' : '#EEEDED',
                   left: -1,
@@ -1701,7 +2018,11 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 }}
               />
             </View>
-            <View style={[styles.seat_layout_container, {height: validHeight}]}>
+            <View
+              style={[
+                styles.seat_layout_container,
+                {height: validHeight, width: '100%'},
+              ]}>
               {/* <View style={{ flex: 1 }} >
 
               <FlatList data={lowerDeckSeats}
@@ -1714,7 +2035,11 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 renderItem={({ item, index }) => <BottomSeaterRowView SeatData={item} Index={index} />}
               />
             </View> */}
-              <View style={{flexDirection: 'row'}}>
+
+
+
+
+              {/* <View style={{flexDirection: 'row'}}>
                 <View>
                   {Lower_list_rows1.map((row, rowIndex) => (
                     <View
@@ -1728,7 +2053,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                     </View>
                   ))}
                 </View>
-                <View style={{marginLeft: 20}}>
+                <View style={{marginLeft: lowerDeckSeats.length > 34 ? null : '18%'}}>
                   {Lower_list_rows.map((row, rowIndex) => (
                     <View
                       key={rowIndex}
@@ -1741,7 +2066,84 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                     </View>
                   ))}
                 </View>
-              </View>
+              </View> */}
+
+{/* 
+                  <ScrollView horizontal contentContainerStyle={styles.container}>
+                       <View style={{ width: containerWidth, height: containerHeight, position: 'relative',marginTop:5}}>
+        {layout.map((seat, index) => (
+             <TouchableOpacity
+          style={[
+            {flexDirection: 'row', justifyContent: 'center'},
+            seat.isBooked && {opacity: 0.5},
+          ]}
+          onPress={() => handleSeatSelection(seat, index)}
+          disabled={seat.isBooked}>
+
+               <Svg style={{width: 30, height: seat.type === 'SS' ? 30 : 77, position: 'absolute',
+              top: seat.top,
+              left: seat.left,
+              width: seatWidth - 8,
+              height: seat.height - 8,
+              backgroundColor: '#e0f7ff',
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderWidth: 1,
+              margin: 4,}}>
+            {seat.type === 'SS'  ? (
+              <>
+                <BusSeater
+                  width="100%"
+                  height="100%"
+                  bottomColor={getSeatBottomColor(seat, index)}
+                  fillColor={getSeatFillColor(seat, index)}
+                  strokeColor={getSeatColor(seat, index)}
+                />
+                <Text
+                  style={{
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: 8,
+                    textAlign: 'center',
+                    justifyContent: 'center',
+                    marginTop: '-39%',
+                    paddingLeft:"20%"
+                  }}>
+                  {seat?.price > 0 ? `₹${seat?.price}` : ''}
+                </Text>
+              </>
+            ) : (
+              <>
+                <SleeperSeat
+                  width="100%"
+                  height="100%"
+                  borderBottomColor={getSeatBorderBottomColor(seat, index)}
+                  borderColor={getSeatBorderColor(seat, index)}
+                  bottomColor={getSeatBottomColor(seat, index)}
+                  fillColor={getSeatFillColor(seat, index)}
+                  strokeColor={getSleeperColor(seat, index)}
+                />
+                <Text
+                  style={{
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: 8,
+                    textAlign: 'center',
+                    justifyContent: 'center',
+                    marginTop: '-42%',
+                    paddingLeft:"20%"
+                  }}>
+                  {seat?.price > 0 ? `₹${seat?.price}` : ''}
+                </Text>
+              </>
+            )}
+          </Svg>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+    </ScrollView> */}
+            {renderDeckSeats(lowerDeckSeats)}
 
               {/* <View>
               <FlatList data={lowerDeckSeats}
@@ -1770,9 +2172,12 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               />
           </View> */}
           </View>
+             {
+            upperDeckSeats?.length > 0 &&
           <View
             style={{
               height: '100%',
+              width: '100%',
               flex: 1,
               borderRadius: 20,
               borderColor:
@@ -1780,15 +2185,15 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               borderWidth: 0.9,
               backgroundColor: '#FFFFFF',
             }}>
-            <View style={{height: 40}}>
+            <View style={{height: '7%'}}>
               <View
                 style={{
                   width: '100%',
-                  height: 8,
                   flexDirection: 'row',
                   justifyContent: 'space-around',
                   position: 'absolute',
-                  marginTop: -7,
+                  height: '50%',
+                  marginTop: '-5%',
                 }}>
                 <Svg style={{width: 14, height: 7}}>
                   <BusLight
@@ -1812,7 +2217,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
               <Text
                 style={{
                   fontWeight: '400',
-                  marginTop: 5,
+                  marginTop: '3%',
                   color: '#393939',
                   fontFamily: 'Inter',
                   fontSize: 10,
@@ -1822,8 +2227,12 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 UPPER BERTH ({upperDeckSeats?.length})
               </Text>
             </View>
-            <View style={[styles.seat_layout_container, {height: validHeight}]}>
-              <View style={{flexDirection: 'row'}}>
+            <View
+              style={[
+                styles.seat_layout_container,
+                {height: validHeight, width: '100%'},
+              ]}>
+              {/* <View style={{flexDirection: 'row'}}>
                 <View>
                   {upper_list_rows1.map((row, rowIndex) => (
                     <View
@@ -1837,7 +2246,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                     </View>
                   ))}
                 </View>
-                <View style={{marginLeft: 17}}>
+                <View style={{marginLeft: '23%'}}>
                   {Upper_list_rows.map((row, rowIndex) => (
                     <View
                       key={rowIndex}
@@ -1850,8 +2259,8 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                     </View>
                   ))}
                 </View>
-              </View>
-
+              </View> */}
+{renderDeckSeats(upperDeckSeats)}
               {/* {upperDeckSeats?.map((seat, index) =>
               seat?.type === "SS" ?
                 <View>
@@ -1956,11 +2365,12 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
             /> */}
             </View>
           </View>
+             }
         </View>
       </ScrollView>
     );
   };
-  console.log(Lower_list_rows1, 'Lower_list_rows1');
+  console.log(Upper_list_rows, 'Lower_list_rows1');
   // const BookBusSeatView = () => {
   //   return (
   //     <View style={styles.container}>
@@ -2389,14 +2799,14 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
       return 'white';
     }
     if (seat?.isBooked === false) {
-      console.log(seat.gender, "seat.gender");
-      
+      console.log(seat.gender, 'seat.gender');
+
       return seat.gender === 'Unisex'
-      ? '#298121'
-      : seat.gender === 'M'
-      ? '#298121'
-      : '#FF00D5';
-    }else if (seat?.isBooked) {
+        ? '#298121'
+        : seat.gender === 'M'
+        ? '#298121'
+        : '#FF00D5';
+    } else if (seat?.isBooked) {
       return seat.gender === 'Unisex'
         ? '#B0B0B0'
         : seat.gender === 'M'
@@ -2421,10 +2831,10 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
 
     if (seat?.isBooked === false) {
       return seat.gender === 'Unisex'
-      ? '#298121'
-      : seat.gender === 'M'
-      ? '#298121'
-      : '#FF00D5';
+        ? '#298121'
+        : seat.gender === 'M'
+        ? '#298121'
+        : '#FF00D5';
     } else if (seat?.isBooked) {
       return seat.gender === 'Unisex'
         ? '#B0B0B0'
@@ -2720,25 +3130,21 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
             }}>
             <Text style={styles.SectionPointTitle}>BOARDING POINT</Text>
           </View>
-          <View style={{flex: 1, backgroundColor: '#FFFFFF', height: 400}}>
-            <View style={{flex: 1, backgroundColor: '#FFFFFF', height: 500}}>
-              <FlatList
-                data={boardingPoints}
-                renderItem={({item}) => (
-                  <BoardingPointRowView
-                    SeatData={item}
-                    selectedBoardingPoint={selectedBoardingPoint}
-                    onSelect={handleSelectBoarding}
-                  />
-                )}
-                keyExtractor={item => item.place_id}
-                showsVerticalScrollIndicator={true}
-                contentContainerStyle={{flexGrow: 1}}
-                extraData={selectedBoardingPoint} // Prevents scroll from jumping
-              />
-              {/* Custom Scrollbar */}
-              {renderCustomScrollbar()}
-            </View>
+          <View style={{flex: 1, backgroundColor: '#FFFFFF', height: 200}}>
+            <FlatList
+              data={boardingPoints}
+              renderItem={({item}) => (
+                <BoardingPointRowView
+                  SeatData={item}
+                  selectedBoardingPoint={selectedBoardingPoint}
+                  onSelect={handleSelectBoarding}
+                />
+              )}
+              keyExtractor={item => item.place_id}
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={{flexGrow: 1}}
+              extraData={selectedBoardingPoint} // Prevents scroll from jumping
+            />
           </View>
         </View>
 
@@ -2831,7 +3237,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
             </TouchableOpacity>
             <View style={styles.topViewTitle}>
               <Text style={[styles.topTitle, {color: themeheaderFontColor}]}>
-                Journey Details
+                Select Seats
               </Text>
               <Text
                 style={[
@@ -2996,19 +3402,17 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
             backgroundColor: '#FFFFFF',
             paddingHorizontal: 10,
             paddingTop: 10,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            shadowColor: 'rgba(99, 95, 95, 0.81)',
-            shadowOffset: {width: 0, height: -2},
-            shadowOpacity: 0.3,
-            shadowRadius: 4,
-            elevation: 5,
-            zIndex: 1,
+            borderTopLeftRadius: 30,
+            borderTopRightRadius: 30,
+            shadowColor: 'rgb(0, 0, 0)',
+            shadowOffset: {width: 0, height: 6},
+            shadowOpacity: 8,
+            elevation: 30, // Android
           }}>
           {viewListAry?.map(item => {
             const iconToUse =
-             screenTheme === 'Luxury Coach' ?
-                 item.icons.selected
+              screenTheme === 'Luxury Coach'
+                ? item.icons.selected
                 : item.icons.normal;
             return (
               <TouchableOpacity
@@ -3025,8 +3429,8 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 }}
                 onPress={() => {
                   setStatusVisible(true);
-                  //setSelectedButton(item.task);
-                  }}>
+                  setSelectedButton(item.task);
+                }}>
                 <IconSVG name={iconToUse} width={36} height={36} />
 
                 <Text
@@ -3057,6 +3461,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
           selectedButton={selectedButton}
           setSelectedButton={setSelectedButton}
           selectBusType={screenTheme}
+          scrollViewRef={scrollViewRef}
         />
       </View>
 
@@ -3080,7 +3485,6 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
             <View
               style={{
                 width: '100%',
-
                 justifyContent: 'center',
                 alignItems: 'center',
               }}>
@@ -3091,7 +3495,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                     : ''
                 }
                 style={{
-                  height: 60,
+                  height: '100%',
                   flexDirection: 'row',
                   //margin: 10,
                   // borderColor: '#001938',
@@ -3106,7 +3510,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                 imageStyle={{
                   borderWidth: 1,
                   borderColor:
-                    screenTheme === 'Luxury Coach' ? '#D89E2F' : '#001938',
+                    screenTheme === 'Luxury Coach' ? '#D89E2F' : '#1F487C',
                   borderRadius: 10,
                 }}>
                 {/* <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -3171,40 +3575,45 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                       flexDirection: 'row',
                       justifyContent: 'space-between',
                     }}>
-                    <View
-                      style={{
-                        justifyContent: 'flex-start',
-                        gap: 5,
-                        width: 100,
-                      }}>
+                    <View style={{width: '54%'}}>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          flexWrap: 'wrap',
+                        }}>
+                        {selectedSeat?.map((seat, index) => (
+                          <Text
+                            key={index}
+                            style={{
+                              width: '33.33%', // 100% / 3 = 33.33% per item to fit 3 per row
+                              color:
+                                screenTheme === 'Luxury Coach'
+                                  ? useThemeColor
+                                  : 'white',
+                              fontWeight: '700',
+                              fontFamily: 'Inter',
+                              fontSize: 13,
+                            }}>
+                            {seat.seatNumber}
+                            {index !== selectedSeat.length - 1 ? ',' : ''}
+                          </Text>
+                        ))}
+                      </View>
+
                       <Text
                         style={{
                           color:
                             screenTheme === 'Luxury Coach'
                               ? useThemeColor
                               : 'white',
-                          fontWeight: '700',
+                          fontWeight: 'lighter',
                           fontFamily: 'Inter',
                           fontSize: 13,
+                          marginTop: '1%',
                         }}>
-                        {selectedSeat.length > 0
-                          ? selectedSeat
-                              .map(seat => seat.seatNumber) // Get the seat numbers
-                              .reverse() // Reverse the order of the seat numbers
-                              .join(', ') // Join them with a comma
-                          : ''}
-                      </Text>
-                      <Text
-                        style={{
-                          color:
-                            screenTheme === 'Luxury Coach'
-                              ? useThemeColor
-                              : 'white',
-                          fontWeight: '700',
-                          fontFamily: 'Inter',
-                          fontSize: 13,
-                        }}>
-                        Selected Seat
+                        {selectedSeat?.length > 1
+                          ? 'Selected Seats'
+                          : 'Selected Seat'}
                       </Text>
                     </View>
 
@@ -3239,7 +3648,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                       <Text
                         style={{
                           alignSelf: 'flex-end',
-                          fontWeight: '900',
+                          fontWeight: 'lighter',
                           fontFamily: 'Inter',
                           fontSize: 13,
                           color:
@@ -3247,7 +3656,7 @@ const BusSeatSelectScreen = ({props, navigation, route}) => {
                               ? useThemeColor
                               : 'white',
                         }}>
-                        Price
+                        Excl. of taxes
                       </Text>
                     </View>
                   </View>
@@ -3516,7 +3925,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFFCC',
     fontFamily: 'Inter',
     fontStyle: 'normal',
-    marginBottom: '10%',
+    marginBottom: '9%',
     paddingHorizontal: 5,
   },
   tabTitleActive: {
@@ -3633,8 +4042,8 @@ const styles = StyleSheet.create({
   seat_layout_container: {
     //backgroundColor: '#FFF',
     overflow: 'hidden',
-    paddingHorizontal: 5,
-    marginBottom: 5,
+    paddingHorizontal: '2%',
+    marginBottom: '2%',
     flexDirection: 'row', // Change this to 'column' to allow vertical wrapping
     flexWrap: 'wrap',
     justifyContent: 'flex-start',

@@ -33,6 +33,9 @@ const SortInsightsScreen = ({ visible, onClose, ticketList,selectedOptions, setS
     state => state?.productReducer?.get_buslist_filter,
   );
 
+
+  console.log(selectCurrentSortName,selectedIndex,selectedOptions,"dorteorjhdfiusdhfsd");
+  
   // const handleApply = () => {
   //   if (!selectCurrentSortName) {
   //     Alert.alert('Please sort things');

@@ -11,6 +11,8 @@ import {
   SectionList,
   Image,
   Alert,
+  findNodeHandle,
+  UIManager,
 } from 'react-native';
 import {Svg} from 'react-native-svg';
 import backgroundImage from '../assets/home_bg.png'; // Replace with your actual image path
@@ -45,6 +47,8 @@ const ViewMoreScreen = ({
   const cancellationPolicies = busData?.Cancellationpolicy || '';
   const [timeRanges, setTimeRanges] = useState('');
   const [policy, setPolicy] = useState('');
+  const [isActive, setIsActive] = useState(null);
+  const [isLayoutReady, setIsLayoutReady] = useState(false);
 
   const scrollViewRef = useRef(null);
   const amenitiesRef = useRef(null);
@@ -54,19 +58,22 @@ const ViewMoreScreen = ({
 
   const scrollToSection = ref => {
     if (ref.current && scrollViewRef.current) {
-      ref.current.measureLayout(
-        scrollViewRef.current,
+      const nodeHandle = findNodeHandle(ref.current);
+      UIManager.measureLayout(
+        nodeHandle,
+        findNodeHandle(scrollViewRef.current),
+        error => console.log('measureLayout error:', error),
         (x, y) => {
-          console.log('Measured Y position:', y);
-          scrollViewRef.current.scrollTo({y: y, animated: true});
+          console.log('Scroll to Y:', y);
+          scrollViewRef.current.scrollTo({y, animated: true});
         },
-        error => console.error(error),
       );
     }
   };
 
   const handleButtonPress = task => {
-    setSelectedButton(task);
+    setIsActive(task);
+    //setSelectedButton(task);
     switch (task) {
       case 'Amenities':
         scrollToSection(amenitiesRef);
@@ -84,6 +91,32 @@ const ViewMoreScreen = ({
         break;
     }
   };
+
+  useEffect(() => {
+    if (visible && selectedButton) {
+      setIsActive(selectedButton);
+
+      // Delay to ensure layout is ready
+      setTimeout(() => {
+        switch (selectedButton) {
+          case 'Amenities':
+            scrollToSection(amenitiesRef);
+            break;
+          case 'Bus Stops':
+            scrollToSection(boardingRef);
+            break;
+          case 'Cancel Policy':
+            scrollToSection(cancellationRef);
+            break;
+          case 'Travel Policy':
+            scrollToSection(travelPolicyRef);
+            break;
+          default:
+            break;
+        }
+      }, 100); // Wait 100ms after modal opens
+    }
+  }, [visible, selectedButton]);
 
   const busFare = calculateDiscountedFare(jdate, busPrice, tbs_discount);
   const servicesArray = Amenities ? Amenities.split(',') : [];
@@ -505,9 +538,7 @@ const ViewMoreScreen = ({
                         width: '23%', // About 4 items in one row with space
                         alignItems: 'center',
                         backgroundColor:
-                          selectedButton === item.task
-                            ? '#1F487C33'
-                            : '#FFFFFF',
+                          isActive === item.task ? '#1F487C33' : '#FFFFFF',
                         paddingVertical: 5,
                         borderRadius: 20,
                         marginBottom: 10,
@@ -532,50 +563,159 @@ const ViewMoreScreen = ({
                   );
                 })}
               </View>
-              <ScrollView ref={scrollViewRef}>
+              <ScrollView
+                ref={scrollViewRef}
+                onLayout={() => {
+                  setIsLayoutReady(true); // Now layout is ready
+                }}>
                 <View
                   ref={boardingRef}
                   style={{
-                    backgroundColor:
-                      selectBusType === 'Luxury Coach' ||
-                      selectBusType === 'lux'
-                        ? '#F6B6424D'
-                        : 'rgba(214, 235, 255, 0.5)',
+                    backgroundColor: '#FFFFFF', // solid bg required for shadow to show
                     marginTop: 10,
-                    shadowColor: 'rgb(0, 0, 0)',
+                    borderRadius: 8, // optional, but makes shadows look smoother
+                    shadowColor: '#000',
                     shadowOffset: {width: 0, height: 4},
-                    shadowOpacity: 0.15,
-                    elevation: 1, // Android
+                    shadowOpacity: 0.2, // valid range is 0–1
+                    shadowRadius: 6, // required for iOS blur
+                    elevation: 6, // higher than 1 for visible shadow on Android
                   }}>
-                  <Text
-                    style={{
-                      color:
-                        selectBusType === 'Luxury Coach' ||
-                        selectBusType === 'lux'
-                          ? '#393939'
-                          : '#1F487C',
-                      fontWeight: 'bold',
-                      fontSize: 17,
-                      padding: 10,
-                    }}>
-                    Boarding Point
-                  </Text>
+                  {/* Inner content with optional translucent background */}
                   <View
                     style={{
-                      flex: 1,
-                      flexDirection: 'row',
-                      //backgroundColor: 'rgba(214, 235, 255, 0.5)',
+                      backgroundColor:
+                        selectBusType === 'Luxury Coach' ||
+                        selectBusType === 'lux'
+                          ? '#F6B6424D'
+                          : 'rgba(214, 235, 255, 0.5)',
+                      padding: 10,
+                      borderRadius: 8,
                     }}>
-                    <View
+                    <Text
                       style={{
-                        width: '100%',
-                        flexDirection: 'column',
+                        color:
+                          selectBusType === 'Luxury Coach' ||
+                          selectBusType === 'lux'
+                            ? '#393939'
+                            : '#1F487C',
+                        fontWeight: 'bold',
+                        fontSize: 17,
                         padding: 10,
                       }}>
-                      {formattedBoarding
+                      Boarding Point
+                    </Text>
+                    <View
+                      style={{
+                        flex: 1,
+                        flexDirection: 'row',
+                        //backgroundColor: 'rgba(214, 235, 255, 0.5)',
+                      }}>
+                      <View
+                        style={{
+                          width: '100%',
+                          flexDirection: 'column',
+                          padding: 10,
+                        }}>
+                        {formattedBoarding
+                          ?.slice(
+                            0,
+                            isBoardingExpanded ? formattedBoarding.length : 1,
+                          )
+                          .map((item, index) => (
+                            <View
+                              key={index}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                marginBottom: 5,
+                                paddingHorizontal: 5,
+                              }}>
+                              {/* No extra Image or Text needed here */}
+                              {item}
+                            </View>
+                          ))}
+                      </View>
+                    </View>
+                    {/* Toggle Footer for Boarding */}
+                    {formattedBoarding?.length > 2 && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setBoardingExpanded(prev => !prev);
+                          if (isBoardingExpanded) {
+                            setDroppingExpanded(true);
+                          } else {
+                            setDroppingExpanded(false);
+                          }
+                        }}>
+                        <View style={styles.footerContainer}>
+                          <View style={styles.footerBgView} />
+                          <View
+                            style={{
+                              borderRadius: 3,
+                              borderColor:
+                                selectBusType === 'Luxury Coach' ||
+                                selectBusType === 'lux'
+                                  ? '#393939'
+                                  : '#1F487C',
+                              backgroundColor:
+                                selectBusType === 'Luxury Coach' ||
+                                selectBusType === 'lux'
+                                  ? '#393939'
+                                  : '#1F487C',
+                              padding: 4,
+                            }}>
+                            <Image
+                              source={require('../assets/downWhiteArrow.png')}
+                              style={{
+                                width: 10,
+                                height: 7,
+                                transform: [
+                                  {
+                                    rotate: isBoardingExpanded
+                                      ? '180deg'
+                                      : '0deg',
+                                  },
+                                ],
+                              }}
+                            />
+                          </View>
+                          <View
+                            style={{
+                              marginVertical: 7,
+                              width: '45%',
+                              borderBottomColor:
+                                selectBusType === 'Luxury Coach' ||
+                                selectBusType === 'lux'
+                                  ? '#393939'
+                                  : '#1F487C',
+                              borderBottomWidth: StyleSheet.hairlineWidth,
+                            }}
+                          />
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                    <Text
+                      style={{
+                        color:
+                          selectBusType === 'Luxury Coach' ||
+                          selectBusType === 'lux'
+                            ? '#393939'
+                            : '#1F487C',
+                        fontWeight: 'bold',
+                        fontSize: 17,
+                        padding: 10,
+                      }}>
+                      Dropping Point
+                    </Text>
+                    <View
+                      style={{
+                        flex: 1,
+                        //backgroundColor: 'rgba(214, 235, 255, 0.5)',
+                      }}>
+                      {formattedDroppinginfo
                         ?.slice(
                           0,
-                          isBoardingExpanded ? formattedBoarding.length : 1,
+                          isDroppingExpanded ? formattedDroppinginfo.length : 1,
                         )
                         .map((item, index) => (
                           <View
@@ -583,166 +723,71 @@ const ViewMoreScreen = ({
                             style={{
                               flexDirection: 'row',
                               alignItems: 'center',
-                              marginBottom: 5,
-                              paddingHorizontal: 5,
+                              marginVertical: 5,
+                              paddingHorizontal: 15,
                             }}>
-                            {/* No extra Image or Text needed here */}
                             {item}
                           </View>
                         ))}
                     </View>
-                  </View>
-                  {/* Toggle Footer for Boarding */}
-                  {formattedBoarding?.length > 2 && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setBoardingExpanded(prev => !prev);
-                        if (isBoardingExpanded) {
-                          setDroppingExpanded(true);
-                        } else {
-                          setDroppingExpanded(false);
-                        }
-                      }}>
-                      <View style={styles.footerContainer}>
-                        <View style={styles.footerBgView} />
-                        <View
-                          style={{
-                            borderRadius: 3,
-                            borderColor:
-                              selectBusType === 'Luxury Coach' ||
-                              selectBusType === 'lux'
-                                ? '#393939'
-                                : '#1F487C',
-                            backgroundColor:
-                              selectBusType === 'Luxury Coach' ||
-                              selectBusType === 'lux'
-                                ? '#393939'
-                                : '#1F487C',
-                            padding: 4,
-                          }}>
-                          <Image
-                            source={require('../assets/downWhiteArrow.png')}
+                    {formattedDroppinginfo.length > 2 && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setDroppingExpanded(prev => !prev);
+                          if (isDroppingExpanded) {
+                            setBoardingExpanded(true);
+                          } else {
+                            setBoardingExpanded(false);
+                          }
+                        }}>
+                        <View style={styles.footerContainer}>
+                          <View style={styles.footerBgView} />
+                          <View
                             style={{
-                              width: 10,
-                              height: 7,
-                              transform: [
-                                {
-                                  rotate: isBoardingExpanded
-                                    ? '180deg'
-                                    : '0deg',
-                                },
-                              ],
+                              borderRadius: 3,
+                              borderColor:
+                                selectBusType === 'Luxury Coach' ||
+                                selectBusType === 'lux'
+                                  ? '#393939'
+                                  : '#1F487C',
+                              backgroundColor:
+                                selectBusType === 'Luxury Coach' ||
+                                selectBusType === 'lux'
+                                  ? '#393939'
+                                  : '#1F487C',
+                              padding: 4,
+                            }}>
+                            <Image
+                              source={require('../assets/downWhiteArrow.png')}
+                              style={{
+                                width: 10,
+                                height: 7,
+                                transform: [
+                                  {
+                                    rotate: isDroppingExpanded
+                                      ? '180deg'
+                                      : '0deg',
+                                  },
+                                ],
+                              }}
+                            />
+                          </View>
+                          <View
+                            style={{
+                              marginVertical: 7,
+                              width: '45%',
+                              borderBottomColor:
+                                selectBusType === 'Luxury Coach' ||
+                                selectBusType === 'lux'
+                                  ? '#393939'
+                                  : '#1F487C',
+                              borderBottomWidth: StyleSheet.hairlineWidth,
                             }}
                           />
                         </View>
-                        <View
-                          style={{
-                            marginVertical: 7,
-                            width: '45%',
-                            borderBottomColor:
-                              selectBusType === 'Luxury Coach' ||
-                              selectBusType === 'lux'
-                                ? '#393939'
-                                : '#1F487C',
-                            borderBottomWidth: StyleSheet.hairlineWidth,
-                          }}
-                        />
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                  <Text
-                    style={{
-                      color:
-                        selectBusType === 'Luxury Coach' ||
-                        selectBusType === 'lux'
-                          ? '#393939'
-                          : '#1F487C',
-                      fontWeight: 'bold',
-                      fontSize: 17,
-                      padding: 10,
-                    }}>
-                    Dropping Point
-                  </Text>
-                  <View
-                    style={{
-                      flex: 1,
-                      //backgroundColor: 'rgba(214, 235, 255, 0.5)',
-                    }}>
-                    {formattedDroppinginfo
-                      ?.slice(
-                        0,
-                        isDroppingExpanded ? formattedDroppinginfo.length : 1,
-                      )
-                      .map((item, index) => (
-                        <View
-                          key={index}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            marginVertical: 5,
-                            paddingHorizontal: 15,
-                          }}>
-                          {item}
-                        </View>
-                      ))}
+                      </TouchableOpacity>
+                    )}
                   </View>
-                  {formattedDroppinginfo.length > 2 && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setDroppingExpanded(prev => !prev);
-                        if (isDroppingExpanded) {
-                          setBoardingExpanded(true);
-                        } else {
-                          setBoardingExpanded(false);
-                        }
-                      }}>
-                      <View style={styles.footerContainer}>
-                        <View style={styles.footerBgView} />
-                        <View
-                          style={{
-                            borderRadius: 3,
-                            borderColor:
-                              selectBusType === 'Luxury Coach' ||
-                              selectBusType === 'lux'
-                                ? '#393939'
-                                : '#1F487C',
-                            backgroundColor:
-                              selectBusType === 'Luxury Coach' ||
-                              selectBusType === 'lux'
-                                ? '#393939'
-                                : '#1F487C',
-                            padding: 4,
-                          }}>
-                          <Image
-                            source={require('../assets/downWhiteArrow.png')}
-                            style={{
-                              width: 10,
-                              height: 7,
-                              transform: [
-                                {
-                                  rotate: isDroppingExpanded
-                                    ? '180deg'
-                                    : '0deg',
-                                },
-                              ],
-                            }}
-                          />
-                        </View>
-                        <View
-                          style={{
-                            marginVertical: 7,
-                            width: '45%',
-                            borderBottomColor:
-                              selectBusType === 'Luxury Coach' ||
-                              selectBusType === 'lux'
-                                ? '#393939'
-                                : '#1F487C',
-                            borderBottomWidth: StyleSheet.hairlineWidth,
-                          }}
-                        />
-                      </View>
-                    </TouchableOpacity>
-                  )}
                 </View>
                 {/* Now, conditionally render based on selectedButton */}
                 <View
@@ -753,6 +798,7 @@ const ViewMoreScreen = ({
                     borderRadius: 10,
                     shadowColor: 'rgba(87, 84, 84, 0.94)',
                     shadowOffset: {width: 1, height: 2},
+                    shadowRadius: 4, // required for iOS
                   }}>
                   <Text
                     style={{
@@ -864,13 +910,11 @@ const ViewMoreScreen = ({
                               <Text
                                 style={{
                                   fontFamily: 'Inter',
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   fontWeight: '400',
                                   color:
                                     selectBusType === 'Luxury Coach' ||
                                     selectBusType === 'lux'
-                                      ? '#393939'
-                                      : '#1F487C'
                                       ? '#393939'
                                       : '#1F487C',
                                   flex: 1,
@@ -886,14 +930,12 @@ const ViewMoreScreen = ({
                                 numberOfLines={2}
                                 style={{
                                   fontFamily: 'Inter',
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   width: '33%',
-                                  fontWeight: '600',
+                                  fontWeight: '900',
                                   color:
                                     selectBusType === 'Luxury Coach' ||
                                     selectBusType === 'lux'
-                                      ? '#393939'
-                                      : '#1F487C'
                                       ? '#393939'
                                       : '#1F487C',
                                   textAlign: 'right',
@@ -1091,12 +1133,13 @@ const ViewMoreScreen = ({
                     style={{
                       flex: 1,
                       marginBottom: 15,
-
-                      // ✅ Shadow for entire section
-                      shadowColor: 'rgb(0, 0, 0)',
-                      shadowOffset: {width: 0, height: 4},
-                      shadowOpacity: 0.15,
-                      elevation: 1, // Android
+                      backgroundColor: '#fff', // required for shadow to appear
+                      borderRadius: 8, // recommended for visual polish
+                      shadowColor: 'black',
+                      shadowOffset: {width: 0, height: 6},
+                      shadowOpacity: 0.2, // must be between 0 and 1
+                      shadowRadius: 6, // required on iOS
+                      elevation: 10, // Android only
                     }}>
                     {TravelPolicy?.map(item => {
                       if (!item.title || !item.data) {

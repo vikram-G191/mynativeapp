@@ -87,7 +87,7 @@ const TripListScreen = (props) => {
 
   const [busColor1, setBusColor1] = useState('#04B9EF');  
   const [pickuptime, setPickUpTime] = useState('');
-  const [selectedOptions, setSelectedOptions] = useState({});
+  const [selectedOptions, setSelectedOptions] = useState({"Price": "Low to High"});
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [successLoader, setSuccessLoader] = useState("")
   const [selectedButton, setSelectedButton] = useState(null);
